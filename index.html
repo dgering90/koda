@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KODA — Kansas Overdose Data Assistant</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a1a; height: 100vh; display: flex; flex-direction: column; }
+  header { background: #1a2744; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  header .logo { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7; }
+  header .subtitle { font-size: 12px; color: #90a4c8; line-height: 1.4; }
+  header .ors-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; color: #90a4c8; letter-spacing: 0.05em; }
+  #chat { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .msg { display: flex; gap: 12px; max-width: 820px; }
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+  .msg.user .bubble { background: #1a2744; color: white; border-radius: 18px 18px 4px 18px; }
+  .msg.koda .bubble { background: white; border: 1px solid #e0e4ed; border-radius: 18px 18px 18px 4px; }
+  .bubble { padding: 12px 16px; font-size: 14px; line-height: 1.7; max-width: 680px; }
+  .bubble p { margin-bottom: 10px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble .worth-noting { background: #e8f4fd; border-left: 3px solid #4fc3f7; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 13px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .msg.koda .avatar { background: #1a2744; color: #4fc3f7; }
+  .msg.user .avatar { background: #4fc3f7; color: #1a2744; }
+  .typing { display: flex; align-items: center; gap: 4px; padding: 14px 16px; }
+  .typing span { width: 7px; height: 7px; background: #90a4c8; border-radius: 50%; animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-top: 12px; }
+  .metric-card { background: #f4f5f7; border-radius: 8px; padding: 10px 12px; }
+  .metric-card .label { font-size: 10px; color: #666; margin-bottom: 3px; line-height: 1.3; }
+  .metric-card .value { font-size: 16px; font-weight: 600; color: #1a2744; }
+  .metric-card .value.high { color: #c0392b; }
+  .metric-card .value.low { color: #27ae60; }
+  .metric-card .compare { font-size: 10px; color: #888; margin-top: 2px; }
+  .suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { padding: 6px 14px; border-radius: 20px; border: 1px solid #c8d0e0; background: white; font-size: 12px; color: #1a2744; cursor: pointer; transition: all 0.15s; }
+  .chip:hover { background: #1a2744; color: white; border-color: #1a2744; }
+  #input-area { padding: 16px 24px; background: white; border-top: 1px solid #e0e4ed; flex-shrink: 0; }
+  #input-row { display: flex; gap: 10px; max-width: 820px; margin: 0 auto; }
+  #user-input { flex: 1; padding: 12px 16px; border: 1px solid #c8d0e0; border-radius: 24px; font-size: 14px; outline: none; font-family: inherit; }
+  #user-input:focus { border-color: #1a2744; }
+  #send-btn { padding: 12px 22px; background: #1a2744; color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  #send-btn:disabled { opacity: 0.4; cursor: default; }
+  .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 8px; max-width: 820px; margin-left: auto; margin-right: auto; }
+  .county-tag { display: inline-block; background: #e8f4fd; color: #1a6b9a; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">KODA</div>
+    <div class="subtitle">Kansas Overdose Data Assistant</div>
+  </div>
+  <div class="ors-badge">ORS · CDC Foundation</div>
+</header>
+
+<div id="chat"></div>
+
+<div id="input-area">
+  <div id="input-row">
+    <input id="user-input" type="text" placeholder="Tell me your county and what you'd like to know…" autocomplete="off" />
+    <button id="send-btn">Send</button>
+  </div>
+  <div class="disclaimer">KODA uses live overdose surveillance data. For emergencies call 911. Data reflects ODMAP, ESSENCE, and KDHE Vital Statistics.</div>
+</div>
+
+<script>
+const PROXY = "https://koda-proxy.dgering.workers.dev";
+const AGOL = "https://services8.arcgis.com/3imH29cidUY8teIo/arcgis/rest/services/KS_County_Overdose_Master/FeatureServer/0/query";
+const GEMINI_KEY = "AIzaSyD6stmZuflnhXY-OC5m-yWLfxzzUIGv0jk";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+const KS_COUNTIES = ["Allen","Anderson","Atchison","Barber","Barton","Bourbon","Brown","Butler","Chase","Chautauqua","Cherokee","Cheyenne","Clark","Clay","Cloud","Coffey","Comanche","Cowley","Crawford","Decatur","Dickinson","Doniphan","Douglas","Edwards","Elk","Ellis","Ellsworth","Finney","Ford","Franklin","Geary","Gove","Graham","Grant","Gray","Greeley","Greenwood","Hamilton","Harper","Harvey","Haskell","Hodgeman","Jackson","Jefferson","Jewell","Johnson","Kearny","Kingman","Kiowa","Labette","Lane","Leavenworth","Lincoln","Linn","Logan","Lyon","Marion","Marshall","McPherson","Meade","Miami","Mitchell","Montgomery","Morris","Morton","Nemaha","Neosho","Ness","Norton","Osage","Osborne","Ottawa","Pawnee","Phillips","Pottawatomie","Pratt","Rawlins","Reno","Republic","Rice","Riley","Rooks","Rush","Russell","Saline","Scott","Sedgwick","Seward","Shawnee","Sheridan","Sherman","Smith","Stafford","Stanton","Stevens","Sumner","Thomas","Trego","Wabaunsee","Wallace","Washington","Wichita","Wilson","Woodson","Wyandotte"];
+
+const CORE_FIELDS = ["NAME","population_1","incidents_total","opioid_incidents","polysub_incidents","rate_total_per1k","eb_rate_total_per100k","odmap_eb_rate_total_per1k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2020_per1k","rate_2021_per1k","rate_2022_per1k","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","unique_substances_present","TopCombo_1","TopCombo_2","TopCombo_3","mean_substances","polysub_rate","naloxone_opioid_total","naloxone_gap","est_kits_needed_annual_median","expected_opioid_ods_annual","F2018_2025_all_fatal","F2018_2025_unintentional","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","visits_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_mental_health_6yr","pct_polysubstance_6yr","pct_suicide_att_6yr","SpikeEvents_2021","SpikeEvents_2022","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","net_dominant_drug","net_bridge_drug","net_shape","p_opioid_dom","p_stimulant_dom","F25to34_2018_2025","F35to44_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","visits_12_17_2425","visits_18_25_2425","past_mean","recent_mean","signal_total_2425","suppress_small_total","no_essence_data"];
+
+const FIELD_LABELS = {
+  incidents_total:"Total OD Incidents",rate_total_per1k:"Rate per 1,000",eb_rate_total_per100k:"EB Rate per 100k",
+  burden_tier:"Burden Tier",ecosystem_type:"Drug Ecosystem",dominance_direction:"Dominant Drug Class",
+  odmap_trend_flag:"Trend Direction",odmap_cagr_2020_2025:"CAGR 2020–2025",
+  rate_2024_per1k:"Rate/1k 2024",rate_2025_per1k:"Rate/1k 2025",
+  odmap_yoy_pct_change_2025:"YoY Change 2025",naloxone_gap:"Naloxone Gap",
+  est_kits_needed_annual_median:"Naloxone Kits Needed (annual)",
+  F2018_2025_all_fatal:"Fatal ODs 2018–2025",crude_rate_all_fatal_per100k:"Fatal Rate per 100k",
+  visits_6yr:"ED Visits (6yr)",visits_2425:"ED Visits 2024–25",ess_trend_flag:"ED Trend",
+  SpikeEvents_2024:"Spike Events 2024",SpikeEvents_2025:"Spike Events 2025",
+  TopCombo_1:"Top Drug Combo",mean_substances:"Mean Substances/Incident",
+  net_dominant_drug:"Dominant Drug",net_bridge_drug:"Bridge Drug",
+};
+
+let allData = null;
+let sessionCounty = null;
+let conversationHistory = [];
+let isLoading = false;
+
+function fmt(val, field) {
+  if (val === null || val === undefined) return "—";
+  if (typeof val === "string") return val;
+  if (field && (field.includes("pct_") || field.includes("_cagr") || field.includes("yoy_pct") || field.includes("cagr_2020"))) {
+    const v = Math.abs(val) <= 5 ? val * 100 : val;
+    return v.toFixed(1) + "%";
+  }
+  if (field && (field.includes("per1k") || field.includes("_rate") || field.includes("ratio") || field.includes("p_opioid") || field.includes("p_stimulant") || field.includes("gap"))) {
+    return val.toFixed(2);
+  }
+  return typeof val === "number" ? (Number.isInteger(val) ? val.toLocaleString() : val.toFixed(1)) : val;
+}
+
+function stateAvg(field) {
+  if (!allData) return null;
+  const vals = allData.map(r => r[field]).filter(v => v !== null && typeof v === "number" && !isNaN(v));
+  return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+}
+
+function detectCounty(text) {
+  const lower = text.toLowerCase();
+  return KS_COUNTIES.find(c => lower.includes(c.toLowerCase())) || null;
+}
+
+async function fetchAGOL() {
+  const fields = CORE_FIELDS.join(",");
+  const url = `${AGOL}?where=1%3D1&outFields=${encodeURIComponent(fields)}&resultRecordCount=2000&f=json`;
+  const proxyUrl = `${PROXY}?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
+  const json = await res.json();
+  return json.features?.map(f => f.attributes) || [];
+}
+
+async function callGemini(prompt) {
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  const d = await res.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || "I wasn't able to generate a response.";
+}
+
+function buildSystemPrompt(countyData, allRows) {
+  const county = countyData.NAME;
+  const pop = (countyData.population_1 || 0).toLocaleString();
+  const dataLines = CORE_FIELDS.filter(f => f !== "NAME").map(f => {
+    const val = countyData[f];
+    const avg = stateAvg(f);
+    const label = FIELD_LABELS[f] || f;
+    let line = `${label}: ${fmt(val, f)}`;
+    if (avg !== null && typeof val === "number") {
+      const flag = val > avg * 1.1 ? " [ABOVE KS AVG]" : val < avg * 0.9 ? " [BELOW KS AVG]" : "";
+      line += ` (KS avg: ${fmt(avg, f)}${flag})`;
+    }
+    return line;
+  }).join("\n");
+
+  return `You are KODA, the Kansas Overdose Data Assistant, an AI analyst built by the CDC Foundation's Overdose Response Strategy (ORS) program for Kansas.
+
+You are speaking with a community partner, public health professional, law enforcement officer, or coalition member about overdose and substance use data for ${county} County, Kansas (population: ${pop}).
+
+LIVE DATA FOR ${county.toUpperCase()} COUNTY:
+${dataLines}
+
+YOUR ROLE:
+- Answer questions in plain, accessible language — not overly clinical
+- Use specific numbers from the data above when answering
+- Compare to Kansas state average when relevant (flagged above as ABOVE/BELOW KS AVG)
+- Proactively surface insights the user may not have asked about but should know
+- When users describe a problem or intervention idea, engage thoughtfully — help them think through what the data says about their situation and what approaches might fit
+- Keep responses focused and conversational — 2–4 paragraphs unless a detailed breakdown is needed
+- If data shows "—" or is suppressed, acknowledge the limitation honestly
+- End responses with a short "Worth noting:" line when there's an important actionable insight
+- You represent ORS and CDC Foundation — be professional but human
+
+Do not make up data. Only use the figures provided above. If asked about something not in the data, say so clearly and suggest where they might find it.`;
+}
+
+function renderMetrics(countyData, fields) {
+  const cards = fields.filter(f => countyData[f] !== null && countyData[f] !== undefined).map(f => {
+    const val = countyData[f];
+    const avg = stateAvg(f);
+    const isHigh = avg !== null && typeof val === "number" && val > avg * 1.1;
+    const isLow = avg !== null && typeof val === "number" && val < avg * 0.9;
+    const compareText = avg !== null && typeof val === "number" ? `KS avg: ${fmt(avg, f)}` : "";
+    return `<div class="metric-card">
+      <div class="label">${FIELD_LABELS[f] || f}</div>
+      <div class="value ${isHigh?"high":isLow?"low":""}">${fmt(val, f)}${isHigh?" ▲":isLow?" ▼":""}</div>
+      ${compareText ? `<div class="compare">${compareText}</div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="metric-grid">${cards}</div>`;
+}
+
+function addMessage(role, html, countyName) {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = `msg ${role}`;
+  const avatar = role === "koda" ? "K" : "U";
+  const tag = countyName ? `<div class="county-tag">${countyName} County</div>` : "";
+  div.innerHTML = `
+    <div class="avatar">${avatar}</div>
+    <div class="bubble">${tag}${html}</div>
+  `;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "msg koda";
+  div.id = "typing-indicator";
+  div.innerHTML = `<div class="avatar">K</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById("typing-indicator");
+  if (t) t.remove();
+}
+
+function addChips(suggestions) {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "msg koda";
+  div.innerHTML = `<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:0">
+    <div class="suggestion-chips">${suggestions.map(s => `<button class="chip" onclick="sendChip('${s.replace(/'/g,"&#39;")}')">${s}</button>`).join("")}</div>
+  </div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+window.sendChip = function(text) {
+  document.getElementById("user-input").value = text;
+  handleSend();
+};
+
+function formatResponse(text) {
+  const worthMatch = text.match(/Worth noting:(.+)/s);
+  let main = text;
+  let worthHtml = "";
+  if (worthMatch) {
+    main = text.replace(worthMatch[0], "").trim();
+    worthHtml = `<div class="worth-noting"><strong>Worth noting:</strong>${worthMatch[1]}</div>`;
+  }
+  const paragraphs = main.split(/\n\n+/).filter(p => p.trim()).map(p => `<p>${p.trim()}</p>`).join("");
+  return paragraphs + worthHtml;
+}
+
+async function handleSend() {
+  if (isLoading) return;
+  const input = document.getElementById("user-input");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  isLoading = true;
+  document.getElementById("send-btn").disabled = true;
+
+  addMessage("user", `<p>${text}</p>`);
+  conversationHistory.push({ role: "user", content: text });
+
+  const detectedCounty = detectCounty(text);
+  if (detectedCounty) sessionCounty = detectedCounty;
+
+  addTyping();
+
+  try {
+    // Load all data if not yet loaded
+    if (!allData) {
+      allData = await fetchAGOL();
+    }
+
+    let responseHtml = "";
+    let chips = [];
+
+    if (!sessionCounty) {
+      removeTyping();
+      const resp = await callGemini(`The user said: "${text}". They haven't mentioned a Kansas county yet. Ask them which county they're interested in, in a warm and brief way. You are KODA, the Kansas Overdose Data Assistant.`);
+      responseHtml = formatResponse(resp);
+      chips = ["I'm from Reno County", "I'm from Sedgwick County", "I'm from Wyandotte County", "I'm from Johnson County"];
+    } else {
+      const countyData = allData.find(r => r.NAME?.toLowerCase().trim() === sessionCounty.toLowerCase().trim());
+      if (!countyData) {
+        removeTyping();
+        responseHtml = `<p>I wasn't able to find data for ${sessionCounty} County. Please check the county name and try again.</p>`;
+      } else {
+        const systemPrompt = buildSystemPrompt(countyData, allData);
+        const messages = conversationHistory.map(m => ({ role: m.role, content: m.content }));
+        removeTyping();
+        addTyping();
+        const aiText = await callGemini(systemPrompt + "\n\nNow respond to this message from the user: " + text);
+        removeTyping();
+        responseHtml = formatResponse(aiText);
+        conversationHistory.push({ role: "assistant", content: aiText });
+
+        // Show key metrics for first county mention
+        if (detectedCounty) {
+          const keyFields = ["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","SpikeEvents_2025","est_kits_needed_annual_median"];
+          responseHtml += renderMetrics(countyData, keyFields);
+        }
+
+        chips = [
+          "What drugs are driving overdoses here?",
+          "How does our trend compare to the state?",
+          "What does our naloxone gap look like?",
+          "Tell me about fatal overdoses in our county",
+          "What intervention strategies fit our data profile?"
+        ];
+      }
+    }
+
+    removeTyping();
+    addMessage("koda", responseHtml, sessionCounty);
+    if (chips.length) addChips(chips);
+
+  } catch(e) {
+    removeTyping();
+    addMessage("koda", `<p>I ran into an error: ${e.message}. Please try again.</p>`);
+  }
+
+  isLoading = false;
+  document.getElementById("send-btn").disabled = false;
+  input.focus();
+}
+
+document.getElementById("send-btn").addEventListener("click", handleSend);
+document.getElementById("user-input").addEventListener("keydown", e => { if (e.key === "Enter") handleSend(); });
+
+// Welcome message
+addMessage("koda", `<p>Hi, I'm <strong>KODA</strong> — the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p>
+<p>I have live access to county-level overdose surveillance data across Kansas — including EMS incidents, emergency department visits, fatal overdoses, naloxone distribution, drug trends, and more.</p>
+<p>Tell me which county you're working in and what you'd like to understand about the overdose landscape there. You can ask me anything — from "what does our meth trend look like?" to "what does the data say about how we should target naloxone distribution?"</p>`);
+
+addChips(["I'm from Reno County and want an overview", "Tell me about opioid trends in Sedgwick County", "What counties have the highest burden in Kansas?", "I'm from Wyandotte County — what's our drug ecosystem look like?"]);
+</script>
+</body>
+</html>
