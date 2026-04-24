@@ -614,11 +614,19 @@ function genCharts(row,topic,peers){
 }
 
 // ── Maps ───────────────────────────────────────────────────────────────────
-// Fetch tract geometry -- correct endpoint for census tracts (MapServer/10)
+// Fetch tract geometry -- Census2020 Tracts_Blocks layer 0 = census tracts
 async function fetchTractGeo(sn, cn) {
-  var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/10/query?where=STATE%3D'" + sn + "'+AND+COUNTY%3D'" + String(cn).padStart(3,"0") + "'&outFields=TRACT,GEOID&f=geojson&outSR=4326";
+  var where = "STATE%3D'" + sn + "'+AND+COUNTY%3D'" + String(cn).padStart(3,"0") + "'";
+  var url = "https://tigerweb.geo.census.gov/arcgis/rest/services/Census2020/Tracts_Blocks/MapServer/0/query?where=" + where + "&outFields=TRACT,GEOID&f=geojson&outSR=4326";
   var res = await fetch(url);
-  return await res.json();
+  var json = await res.json();
+  // Fallback to tigerWMS_Census2020 layer 8 if no features returned
+  if (!json.features || !json.features.length) {
+    var url2 = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query?where=" + where + "&outFields=TRACT,GEOID&f=geojson&outSR=4326";
+    var res2 = await fetch(url2);
+    json = await res2.json();
+  }
+  return json;
 }
 
 function getBurdenColor(tier){
