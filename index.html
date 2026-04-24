@@ -80,8 +80,8 @@
 </div>
 
 <script>
-const PROXY = "https://koda-proxy.dgering.workers.dev";
-const COUNTY_CSV_ID = "1Z0WpqAybrHa26kF5hs6SxJWMlIUh2_9e";
+const COUNTY_CSV_URL = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20County%20Data.csv";
+const TRACT_CSV_URL = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20Tract%20Data.csv";
 const GEMINI_KEY = "AIzaSyCrem6-6ZjYFHdyHfa3-jsfZW005oOdFZE";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
@@ -465,9 +465,7 @@ document.getElementById("user-input").addEventListener("keydown", e => { if(e.ke
 // Load CSV on startup
 async function init() {
   try {
-    const csvUrl = `https://drive.google.com/uc?export=download&id=${COUNTY_CSV_ID}`;
-    const proxyUrl = `${PROXY}?url=${encodeURIComponent(csvUrl)}`;
-    const res = await fetch(proxyUrl);
+    const res = await fetch(COUNTY_CSV_URL);
     if (!res.ok) throw new Error(`Failed to load data (${res.status})`);
     const text = await res.text();
     const parsed = parseCSV(text);
