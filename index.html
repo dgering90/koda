@@ -86,17 +86,15 @@ const TRACT_CSV_URL  = "https://raw.githubusercontent.com/dgering90/koda/main/Ka
 const GEMINI_KEY = "AIzaSyDRKa1v31XHhQ6Pzzud1YqLlVhnmYbXKWQ";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
-// ── KHP Troop Areas (county FIPS → troop) ──────────────────────────────────
+// ── KHP Troop Areas — verified from KHP official website ───────────────────
 const KHP_TROOPS = {
-  "A": { name:"Troop A – Topeka", counties:["20087","20085","20139","20197","20117","20131","20013","20107","20003","20059"] },
-  "B": { name:"Troop B – Salina", counties:["20169","20041","20027","20029","20123","20143","20157","20089","20183","20137","20147","20105","20167","20195"] },
-  "C": { name:"Troop C – Dodge City", counties:["20057","20069","20025","20033","20083","20097","20101","20109","20135","20145","20153","20165","20185","20187","20189","20199","20203"] },
-  "D": { name:"Troop D – Wichita", counties:["20173","20015","20035","20077","20079","20095","20115","20159","20191"] },
-  "E": { name:"Troop E – Chanute", counties:["20001","20011","20031","20049","20099","20107","20125","20133","20205","20207"] },
-  "F": { name:"Troop F – Topeka Metro", counties:["20177","20045","20091","20103","20121","20149"] },
-  "G": { name:"Troop G – Garden City", counties:["20055","20067","20071","20075","20081","20093","20119","20129","20175"] },
-  "H": { name:"Troop H – Hays", counties:["20051","20053","20063","20065","20163","20193"] },
-  "I": { name:"Troop I – Liberal", counties:["20009","20039","20073","20111","20113","20151","20155","20161"] },
+  "A": { name:"Troop A – Olathe (KC Metro)", counties:["20103","20209","20121","20091"] },
+  "B": { name:"Troop B – Topeka (NE Kansas)", counties:["20131","20013","20043","20005","20087","20045","20059","20139","20177","20085","20149","20197"] },
+  "C": { name:"Troop C – Salina (N Central Kansas)", counties:["20017","20027","20029","20041","20053","20061","20089","20105","20115","20117","20113","20123","20127","20143","20157","20161","20169","20201"] },
+  "D": { name:"Troop D – Hays (NW Kansas)", counties:["20023","20039","20051","20063","20065","20109","20137","20141","20147","20153","20163","20167","20179","20181","20183","20193","20195","20199"] },
+  "E": { name:"Troop E – Garden City (SW Kansas)", counties:["20025","20033","20047","20055","20057","20067","20069","20071","20075","20081","20083","20093","20097","20101","20119","20129","20135","20145","20153","20165","20171","20175","20187","20189"] },
+  "F": { name:"Troop F – Wichita (S Central Kansas)", counties:["20007","20009","20015","20035","20077","20079","20095","20151","20155","20159","20173","20185","20191"] },
+  "H": { name:"Troop H – Chanute (SE Kansas)", counties:["20001","20003","20011","20019","20021","20031","20049","20073","20099","20107","20111","20125","20133","20205","20207"] },
 };
 
 // County FIPS → troop letter
@@ -528,7 +526,13 @@ function addChips(chips) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
-window.sendChip = t => { document.getElementById("user-input").value = t; handleSend(); };
+window.sendChip = t => {
+  // Pre-detect location from chip text so county is set before handleSend
+  const detected = detectLocation(t);
+  if (detected) { sessionFIPS = detected.fips; sessionCountyName = detected.countyName; }
+  document.getElementById("user-input").value = t;
+  handleSend();
+};
 
 function formatResponse(text) {
   // Remove markdown bold
@@ -672,7 +676,7 @@ async function init() {
 <p>I have county-level and census tract-level overdose surveillance data for all of Kansas — including EMS incidents (2020–2025), emergency department visits, fatal overdoses (2018–2025), naloxone distribution, drug trends, spike events, and more. I can compare any county to the Kansas state average, break down overdose patterns by KHP Troop area, and drill into census tract hotspots within a county.</p>
 <p>Tell me which county or city you're working in and what you'd like to understand.</p>`);
 
-    addChips(["I'm from Reno County and want an overview","I'm from Wichita — tell me about stimulant trends","I'm from Wyandotte County — what's our drug ecosystem?","Break down overdoses by KHP Troop area","Where is burden highest within Sedgwick County?"]);
+    addChips(["Give me an overview of Reno County","Tell me about stimulant trends in Sedgwick County","What is Wyandotte County's drug ecosystem?","Break down overdoses by KHP Troop area","Where is burden highest within Sedgwick County?"]);
 
   } catch(e) {
     document.getElementById("loading-screen").innerHTML = `
