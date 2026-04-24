@@ -274,28 +274,35 @@ function fmt(val, field) {
   return typeof val === "number" ? (Number.isInteger(val) ? val.toLocaleString() : val % 1 === 0 ? val.toLocaleString() : val.toFixed(1)) : val;
 }
 
-function buildDataSummary(row) {
-  const fields = [
-    "incidents_total","opioid_incidents","polysub_incidents","rate_total_per1k","eb_rate_total_per100k",
-    "burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025",
-    "rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025",
-    "past_mean","recent_mean","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana",
-    "unique_substances_present","TopCombo_1","TopCombo_2","TopCombo_3","mean_substances","polysub_rate",
-    "naloxone_opioid_total","naloxone_gap","est_kits_needed_annual_median","est_kits_needed_annual_high","expected_opioid_ods_annual",
-    "F2018_2025_all_fatal","F2018_2025_unintentional","crude_rate_all_fatal_per100k","crude_rate_unintentional_per100k",
-    "F2018_2025_opioid","F2018_2025_psychostimulant","F2018_2025_cocaine","F2018_2025_benzo",
-    "visits_6yr","unique_pts_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025",
-    "pct_opioid_6yr","pct_stimulant_6yr","pct_alcohol_6yr","pct_polysubstance_6yr","pct_mental_health_6yr",
-    "avg_los_days_6yr","pct_disp_admitted_6yr","pct_suicide_att_6yr",
-    "SpikeEvents_2021","SpikeEvents_2022","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025",
-    "net_dominant_drug","net_bridge_drug","net_shape","net_density","net_strongest_pair",
-    "p_opioid_dom","p_stimulant_dom","dominance_confidence","signal_total_2425",
-    "F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025",
-    "male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025",
-    "visits_12_17_2425","visits_18_25_2425",
-    "cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025","cagr_raw_Benzodiazepine_2020_2025",
-    "suppress_small_total","no_essence_data"
-  ];
+const TOPIC_FIELDS = {
+  core: ["incidents_total","rate_total_per1k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","suppress_small_total","no_essence_data"],
+  drugs: ["Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","unique_substances_present","TopCombo_1","TopCombo_2","TopCombo_3","mean_substances","polysub_incidents","polysub_rate","net_dominant_drug","net_bridge_drug","net_strongest_pair","p_opioid_dom","p_stimulant_dom"],
+  trends: ["odmap_cagr_2020_2025","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","rate_2020_per1k","rate_2021_per1k","rate_2022_per1k","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","signal_total_2425","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
+  naloxone: ["naloxone_opioid_total","naloxone_gap","est_kits_needed_annual_median","est_kits_needed_annual_high","expected_opioid_ods_annual","naloxone_opioid_rate","opioid_incidents"],
+  fatal: ["F2018_2025_all_fatal","F2018_2025_unintentional","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","F2018_2025_cocaine","F2018_2025_benzo","F2024_all_fatal","F2023_all_fatal"],
+  ed: ["visits_6yr","unique_pts_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_alcohol_6yr","pct_polysubstance_6yr","pct_mental_health_6yr","avg_los_days_6yr","pct_disp_admitted_6yr","pct_suicide_att_6yr"],
+  demographics: ["F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025","visits_12_17_2425","visits_18_25_2425"],
+  spikes: ["SpikeEvents_2021","SpikeEvents_2022","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","signal_total_2425","burden_tier","burden_high"],
+  network: ["ecosystem_type","dominance_direction","net_dominant_drug","net_bridge_drug","net_shape","net_density","net_strongest_pair","p_opioid_dom","p_stimulant_dom","dominance_confidence","unique_substances_present","TopCombo_1","TopCombo_2","TopCombo_3"],
+  intervention: ["burden_tier","ecosystem_type","naloxone_gap","est_kits_needed_annual_median","expected_opioid_ods_annual","odmap_trend_flag","signal_total_2425","pct_mental_health_6yr","pct_suicide_att_6yr","net_bridge_drug","dominance_direction"],
+};
+
+function detectTopic(text) {
+  const t = text.toLowerCase();
+  if (/naloxone|narcan|kit|distribution|gap/.test(t)) return "naloxone";
+  if (/fatal|death|died|mortality|overdose death/.test(t)) return "fatal";
+  if (/ed|emergency|hospital|essence|visit/.test(t)) return "ed";
+  if (/demographic|age|gender|race|hispanic|youth|young|teen/.test(t)) return "demographics";
+  if (/spike|ears|surge|cluster/.test(t)) return "spikes";
+  if (/network|ecosystem|bridge|dominant|polysubstance|combo|combination/.test(t)) return "network";
+  if (/trend|cagr|change|year|trajectory|getting worse|improving/.test(t)) return "trends";
+  if (/meth|opioid|fentanyl|benzo|cocaine|alcohol|drug|substance/.test(t)) return "drugs";
+  if (/intervention|strategy|program|prevention|address|reduce|help|plan/.test(t)) return "intervention";
+  return "core";
+}
+
+function buildDataSummary(row, topic) {
+  const fields = [...new Set([...TOPIC_FIELDS.core, ...(TOPIC_FIELDS[topic] || [])])];
 
   return fields.map(f => {
     const val = row[f];
