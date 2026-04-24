@@ -751,8 +751,16 @@ function removeTyping() { var t=document.getElementById("typing-indicator"); if(
 function addChips(chips) {
   var chat=document.getElementById("chat"), div=document.createElement("div");
   div.className="msg koda";
-  div.innerHTML='<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:4px 0"><div class="suggestion-chips">'+chips.map(function(s){return'<button class="chip" onclick="sendChip(\''+s.replace(/'/g,"&#39;")+'\'">'+s+'</button>';}).join("")+'</div></div>';
-  chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+  var btns = chips.map(function(s, i) {
+    return '<button class="chip" id="chip-'+chartCounter+'-'+i+'">'+s+'</button>';
+  }).join("");
+  div.innerHTML='<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:4px 0"><div class="suggestion-chips">'+btns+'</div></div>';
+  chat.appendChild(div);
+  chips.forEach(function(s, i) {
+    var btn = document.getElementById("chip-"+chartCounter+"-"+i);
+    if (btn) btn.addEventListener("click", function() { sendChip(s); });
+  });
+  chat.scrollTop=chat.scrollHeight;
 }
 
 window.sendChip = function(t) {
