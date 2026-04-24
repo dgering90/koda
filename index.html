@@ -213,14 +213,26 @@ function detectFIPS(text) {
 }
 
 async function fetchAGOL() {
-  const fields = CORE_FIELDS.join(",");
-  const url = `${AGOL}?where=1%3D1&outFields=${encodeURIComponent(fields)}&resultRecordCount=2000&f=json`;
-  const proxyUrl = `${PROXY}?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(json.error.message || "AGOL error");
-  return json.features?.map(f => f.attributes) || [];
+  const batch1 = ["NAME","FIPS","population_1","incidents_total","opioid_incidents","polysub_incidents","rate_total_per1k","eb_rate_total_per100k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","TopCombo_1","TopCombo_2","TopCombo_3"];
+  const batch2 = ["NAME","FIPS","mean_substances","naloxone_gap","naloxone_opioid_total","est_kits_needed_annual_median","expected_opioid_ods_annual","F2018_2025_all_fatal","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","visits_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_mental_health_6yr","pct_polysubstance_6yr","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","net_dominant_drug","net_bridge_drug","net_shape","past_mean","recent_mean","signal_total_2425","unique_substances_present"];
+
+  async function fetchBatch(fields) {
+    const url = `${AGOL}?where=1%3D1&outFields=${fields.join(",")}&resultRecordCount=2000&f=json`;
+    const proxyUrl = `${PROXY}?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message || "AGOL error");
+    return json.features?.map(f => f.attributes) || [];
+  }
+
+  const [rows1, rows2] = await Promise.all([fetchBatch(batch1), fetchBatch(batch2)]);
+
+  // Merge by FIPS
+  const map = {};
+  rows1.forEach(r => { map[r.FIPS] = { ...r }; });
+  rows2.forEach(r => { if (map[r.FIPS]) Object.assign(map[r.FIPS], r); });
+  return Object.values(map);
 }
 
 async function callGemini(prompt) {
