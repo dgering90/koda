@@ -7,58 +7,58 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a1a; height: 100vh; display: flex; flex-direction: column; }
-  header { background: #1a2744; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  header .logo { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7; }
-  header .subtitle { font-size: 12px; color: #90a4c8; line-height: 1.4; }
-  header .ors-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; color: #90a4c8; letter-spacing: 0.05em; }
-  #chat { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-  .msg { display: flex; gap: 12px; max-width: 820px; }
-  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
-  .msg.user .bubble { background: #1a2744; color: white; border-radius: 18px 18px 4px 18px; }
-  .msg.koda .bubble { background: white; border: 1px solid #e0e4ed; border-radius: 18px 18px 18px 4px; }
-  .bubble { padding: 12px 16px; font-size: 14px; line-height: 1.7; max-width: 700px; }
-  .bubble p { margin-bottom: 10px; }
-  .bubble p:last-child { margin-bottom: 0; }
-  .bubble .worth-noting { background: #e8f4fd; border-left: 3px solid #4fc3f7; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 13px; }
-  .bubble strong { font-weight: 600; }
-  .avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px; }
-  .msg.koda .avatar { background: #1a2744; color: #4fc3f7; }
-  .msg.user .avatar { background: #4fc3f7; color: #1a2744; }
-  .typing { display: flex; align-items: center; gap: 4px; padding: 14px 16px; }
-  .typing span { width: 7px; height: 7px; background: #90a4c8; border-radius: 50%; animation: bounce 1.2s infinite; }
-  .typing span:nth-child(2) { animation-delay: 0.2s; }
-  .typing span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; margin-top: 12px; }
-  .metric-card { background: #f4f5f7; border-radius: 8px; padding: 10px 12px; }
-  .metric-card .label { font-size: 10px; color: #666; margin-bottom: 3px; line-height: 1.3; }
-  .metric-card .value { font-size: 16px; font-weight: 600; color: #1a2744; }
-  .metric-card .value.high { color: #c0392b; }
-  .metric-card .value.low { color: #27ae60; }
-  .metric-card .compare { font-size: 10px; color: #888; margin-top: 2px; }
-  .suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .chip { padding: 6px 14px; border-radius: 20px; border: 1px solid #c8d0e0; background: white; font-size: 12px; color: #1a2744; cursor: pointer; transition: all 0.15s; }
-  .chip:hover { background: #1a2744; color: white; border-color: #1a2744; }
-  #input-area { padding: 16px 24px; background: white; border-top: 1px solid #e0e4ed; flex-shrink: 0; }
-  #input-row { display: flex; gap: 10px; max-width: 820px; margin: 0 auto; }
-  #user-input { flex: 1; padding: 12px 16px; border: 1px solid #c8d0e0; border-radius: 24px; font-size: 14px; outline: none; font-family: inherit; }
-  #user-input:focus { border-color: #1a2744; }
-  #send-btn { padding: 12px 22px; background: #1a2744; color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
-  #send-btn:disabled { opacity: 0.4; cursor: default; }
-  .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 8px; max-width: 820px; margin-left: auto; margin-right: auto; }
-  .county-tag { display: inline-block; background: #e8f4fd; color: #1a6b9a; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; font-weight: 500; }
-  #loading-screen { position: fixed; inset: 0; background: #1a2744; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 100; }
-  #loading-screen .logo { font-size: 36px; font-weight: 700; color: #4fc3f7; letter-spacing: 0.05em; }
-  #loading-screen .load-msg { color: #90a4c8; font-size: 14px; }
-  #loading-screen .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .tract-map { width: 100%; height: 320px; border-radius: 8px; margin-top: 12px; border: 1px solid #e0e4ed; }
-  .map-legend { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
-  .map-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; }
-  .map-legend-swatch { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
-  .map-title { font-size: 12px; font-weight: 600; color: #1a2744; margin-top: 12px; margin-bottom: 4px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a1a; height: 100vh; display: flex; flex-direction: column; }
+header { background: #1a2744; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+header .logo { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7; }
+header .subtitle { font-size: 12px; color: #90a4c8; line-height: 1.4; }
+header .ors-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; color: #90a4c8; letter-spacing: 0.05em; }
+#chat { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.msg { display: flex; gap: 12px; max-width: 820px; }
+.msg.user { flex-direction: row-reverse; align-self: flex-end; }
+.msg.user .bubble { background: #1a2744; color: white; border-radius: 18px 18px 4px 18px; }
+.msg.koda .bubble { background: white; border: 1px solid #e0e4ed; border-radius: 18px 18px 18px 4px; }
+.bubble { padding: 12px 16px; font-size: 14px; line-height: 1.7; max-width: 700px; }
+.bubble p { margin-bottom: 10px; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble .worth-noting { background: #e8f4fd; border-left: 3px solid #4fc3f7; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 13px; }
+.bubble strong { font-weight: 600; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px; }
+.msg.koda .avatar { background: #1a2744; color: #4fc3f7; }
+.msg.user .avatar { background: #4fc3f7; color: #1a2744; }
+.typing { display: flex; align-items: center; gap: 4px; padding: 14px 16px; }
+.typing span { width: 7px; height: 7px; background: #90a4c8; border-radius: 50%; animation: bounce 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; margin-top: 12px; }
+.metric-card { background: #f4f5f7; border-radius: 8px; padding: 10px 12px; }
+.metric-card .label { font-size: 10px; color: #666; margin-bottom: 3px; line-height: 1.3; }
+.metric-card .value { font-size: 16px; font-weight: 600; color: #1a2744; }
+.metric-card .value.high { color: #c0392b; }
+.metric-card .value.low { color: #27ae60; }
+.metric-card .compare { font-size: 10px; color: #888; margin-top: 2px; }
+.suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip { padding: 6px 14px; border-radius: 20px; border: 1px solid #c8d0e0; background: white; font-size: 12px; color: #1a2744; cursor: pointer; transition: all 0.15s; }
+.chip:hover { background: #1a2744; color: white; border-color: #1a2744; }
+#input-area { padding: 16px 24px; background: white; border-top: 1px solid #e0e4ed; flex-shrink: 0; }
+#input-row { display: flex; gap: 10px; max-width: 820px; margin: 0 auto; }
+#user-input { flex: 1; padding: 12px 16px; border: 1px solid #c8d0e0; border-radius: 24px; font-size: 14px; outline: none; font-family: inherit; }
+#user-input:focus { border-color: #1a2744; }
+#send-btn { padding: 12px 22px; background: #1a2744; color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+#send-btn:disabled { opacity: 0.4; cursor: default; }
+.disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 8px; max-width: 820px; margin-left: auto; margin-right: auto; }
+.county-tag { display: inline-block; background: #e8f4fd; color: #1a6b9a; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; font-weight: 500; }
+#loading-screen { position: fixed; inset: 0; background: #1a2744; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 100; }
+#loading-screen .logo { font-size: 36px; font-weight: 700; color: #4fc3f7; letter-spacing: 0.05em; }
+#loading-screen .load-msg { color: #90a4c8; font-size: 14px; }
+#loading-screen .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tract-map { width: 100%; height: 320px; border-radius: 8px; margin-top: 12px; border: 1px solid #e0e4ed; }
+.map-legend { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+.map-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; }
+.map-legend-swatch { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
+.map-title { font-size: 12px; font-weight: 600; color: #1a2744; margin-top: 12px; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -66,7 +66,7 @@
 <div id="loading-screen">
   <div class="logo">KODA</div>
   <div class="spinner"></div>
-  <div class="load-msg">Loading Kansas overdose data…</div>
+  <div class="load-msg">Loading Kansas overdose data...</div>
 </div>
 
 <header>
@@ -81,31 +81,33 @@
 
 <div id="input-area">
   <div id="input-row">
-    <input id="user-input" type="text" placeholder="Tell me your county or city and what you'd like to know…" autocomplete="off" />
+    <input id="user-input" type="text" placeholder="Tell me your county or city and what you'd like to know..." autocomplete="off"/>
     <button id="send-btn">Send</button>
   </div>
-  <div class="disclaimer">KODA uses overdose surveillance data. For emergencies call 911. Data reflects ODMAP (2020–2025), ESSENCE, and KDHE Vital Statistics.</div>
+  <div class="disclaimer">KODA uses overdose surveillance data. For emergencies call 911. Data reflects ODMAP (2020-2025), ESSENCE, and KDHE Vital Statistics.</div>
 </div>
 
 <script>
 const COUNTY_CSV_URL = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20County%20Data.csv";
-const TRACT_CSV_URL  = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20Tract%20Data.csv";
+const TRACT_CSV_URL = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20Tract%20Data.csv";
 const WORKER_URL = "https://koda-proxy.dgering.workers.dev";
 
-// ── KHP Troops (verified from KHP official website) ────────────────────────
 const KHP_TROOPS = {
-  "A": { name:"Troop A – Olathe (KC Metro)",         counties:["20103","20209","20121","20091"] },
-  "B": { name:"Troop B – Topeka (NE Kansas)",         counties:["20131","20013","20043","20005","20087","20045","20059","20139","20177","20085","20149","20197"] },
-  "C": { name:"Troop C – Salina (N Central Kansas)",  counties:["20017","20027","20029","20041","20053","20061","20089","20105","20115","20117","20113","20123","20127","20143","20157","20161","20169","20201"] },
-  "D": { name:"Troop D – Hays (NW Kansas)",           counties:["20023","20039","20051","20063","20065","20109","20137","20141","20147","20153","20163","20167","20179","20181","20183","20193","20195","20199"] },
-  "E": { name:"Troop E – Garden City (SW Kansas)",    counties:["20025","20033","20047","20055","20057","20067","20069","20071","20075","20081","20083","20093","20097","20101","20119","20129","20135","20145","20165","20171","20175","20187","20189"] },
-  "F": { name:"Troop F – Wichita (S Central Kansas)", counties:["20007","20009","20015","20035","20077","20079","20095","20151","20155","20159","20173","20185","20191"] },
-  "H": { name:"Troop H – Chanute (SE Kansas)",        counties:["20001","20003","20011","20019","20021","20031","20049","20073","20099","20107","20111","20125","20133","20205","20207"] },
+  "A": { name:"Troop A - Olathe (KC Metro)", counties:["20103","20209","20121","20091"] },
+  "B": { name:"Troop B - Topeka (NE Kansas)", counties:["20131","20013","20043","20005","20087","20045","20059","20139","20177","20085","20149","20197"] },
+  "C": { name:"Troop C - Salina (N Central Kansas)", counties:["20017","20027","20029","20041","20053","20061","20089","20105","20115","20117","20113","20123","20127","20143","20157","20161","20169","20201"] },
+  "D": { name:"Troop D - Hays (NW Kansas)", counties:["20023","20039","20051","20063","20065","20109","20137","20141","20147","20153","20163","20167","20179","20181","20183","20193","20195","20199"] },
+  "E": { name:"Troop E - Garden City (SW Kansas)", counties:["20025","20033","20047","20055","20057","20067","20069","20071","20075","20081","20083","20093","20097","20101","20119","20129","20135","20145","20165","20171","20175","20187","20189"] },
+  "F": { name:"Troop F - Wichita (S Central Kansas)", counties:["20007","20009","20015","20035","20077","20079","20095","20151","20155","20159","20173","20185","20191"] },
+  "H": { name:"Troop H - Chanute (SE Kansas)", counties:["20001","20003","20011","20019","20021","20031","20049","20073","20099","20107","20111","20125","20133","20205","20207"] }
 };
-const FIPS_TO_TROOP = {};
-Object.entries(KHP_TROOPS).forEach(([l,t]) => t.counties.forEach(f => FIPS_TO_TROOP[f] = l));
 
-// ── County lookups ─────────────────────────────────────────────────────────
+const FIPS_TO_TROOP = {};
+Object.entries(KHP_TROOPS).forEach(function(entry) {
+  var letter = entry[0], t = entry[1];
+  t.counties.forEach(function(f) { FIPS_TO_TROOP[f] = letter; });
+});
+
 const COUNTY_FIPS = {
   "Allen":"20001","Anderson":"20003","Atchison":"20005","Barber":"20007","Barton":"20009",
   "Bourbon":"20011","Brown":"20013","Butler":"20015","Chase":"20017","Chautauqua":"20019",
@@ -129,11 +131,13 @@ const COUNTY_FIPS = {
   "Sumner":"20191","Thomas":"20193","Trego":"20195","Wabaunsee":"20197","Wallace":"20199",
   "Washington":"20201","Wichita":"20203","Wilson":"20205","Woodson":"20207","Wyandotte":"20209"
 };
-const FIPS_COUNTY = Object.fromEntries(Object.entries(COUNTY_FIPS).map(([k,v])=>[v,k]));
+
+const FIPS_COUNTY = {};
+Object.entries(COUNTY_FIPS).forEach(function(e) { FIPS_COUNTY[e[1]] = e[0]; });
 
 const CITY_FIPS = {
   "wichita":"20173","derby":"20173","andover":"20173","haysville":"20173","valley center":"20173","maize":"20173","goddard":"20173","cheney":"20173","mulvane":"20173",
-  "overland park":"20091","olathe":"20091","shawnee":"20091","lenexa":"20091","leawood":"20091","merriam":"20091","prairie village":"20091","gardner":"20091","spring hill":"20091","de soto":"20091","desoto":"20091","mission":"20091","roeland park":"20091",
+  "overland park":"20091","olathe":"20091","shawnee":"20091","lenexa":"20091","leawood":"20091","merriam":"20091","prairie village":"20091","gardner":"20091","spring hill":"20091","desoto":"20091","de soto":"20091","mission":"20091","roeland park":"20091",
   "kansas city":"20209","bonner springs":"20209","edwardsville":"20209",
   "topeka":"20177","auburn":"20177","silver lake":"20177","rossville":"20177","meriden":"20177",
   "lawrence":"20045","eudora":"20045","baldwin city":"20045","lecompton":"20045",
@@ -164,51 +168,84 @@ const CITY_FIPS = {
   "belleville":"20157","mankato":"20089","osborne":"20141","smith center":"20183"
 };
 
-// ── Field labels ───────────────────────────────────────────────────────────
 const FIELD_LABELS = {
-  incidents_total:"Total OD Incidents (2020–2025)",rate_total_per1k:"Rate per 1,000 (2020–2025)",
-  eb_rate_total_per100k:"EB Rate per 100k",burden_tier:"Burden Tier",
-  ecosystem_type:"Drug Ecosystem Type",dominance_direction:"Dominant Drug Class",
-  odmap_trend_flag:"Trend Direction",odmap_cagr_2020_2025:"CAGR 2020–2025",
-  rate_2020_per1k:"Rate/1k 2020",rate_2021_per1k:"Rate/1k 2021",rate_2022_per1k:"Rate/1k 2022",
-  rate_2023_per1k:"Rate/1k 2023",rate_2024_per1k:"Rate/1k 2024",rate_2025_per1k:"Rate/1k 2025",
-  odmap_yoy_pct_change_2024:"YoY % Change 2024",odmap_yoy_pct_change_2025:"YoY % Change 2025",
-  Opioid:"Opioid Incidents (2020–2025)",Methamphetamine:"Meth Incidents (2020–2025)",
-  Benzodiazepine:"Benzo Incidents (2020–2025)",Cocaine:"Cocaine Incidents (2020–2025)",
-  Alcohol:"Alcohol Incidents (2020–2025)",Synthetic_Marijuana:"Synthetic MJ Incidents (2020–2025)",
+  incidents_total:"Total OD Incidents (2020-2025)",
+  rate_total_per1k:"Rate per 1,000 (2020-2025)",
+  eb_rate_total_per100k:"EB Rate per 100k",
+  burden_tier:"Burden Tier",
+  ecosystem_type:"Drug Ecosystem Type",
+  dominance_direction:"Dominant Drug Class",
+  odmap_trend_flag:"Trend Direction",
+  odmap_cagr_2020_2025:"CAGR 2020-2025",
+  rate_2020_per1k:"Rate/1k 2020", rate_2021_per1k:"Rate/1k 2021", rate_2022_per1k:"Rate/1k 2022",
+  rate_2023_per1k:"Rate/1k 2023", rate_2024_per1k:"Rate/1k 2024", rate_2025_per1k:"Rate/1k 2025",
+  odmap_yoy_pct_change_2024:"YoY % Change 2024",
+  odmap_yoy_pct_change_2025:"YoY % Change 2025",
+  Opioid:"Opioid Incidents (2020-2025)",
+  Methamphetamine:"Meth Incidents (2020-2025)",
+  Benzodiazepine:"Benzo Incidents (2020-2025)",
+  Cocaine:"Cocaine Incidents (2020-2025)",
+  Alcohol:"Alcohol Incidents (2020-2025)",
+  Synthetic_Marijuana:"Synthetic MJ Incidents (2020-2025)",
   unique_substances_present:"Unique Substances Present",
-  mean_substances:"Mean Substances/Incident",polysub_incidents:"Polysubstance Incidents (2020–2025)",
-  naloxone_gap:"Naloxone Gap Score",naloxone_opioid_total:"Total Naloxone Administrations (2020–2025)",
-  "est_kits_needed_annual_high":"Naloxone Kits Needed — HIGH ESTIMATE (annual, recommended for planning)",
-  "est_kits_needed_annual_median":"Naloxone Kits Needed — median estimate (annual)",
-  "kits_need_min_floor":"Naloxone Kits Needed — minimum floor (annual)",
+  mean_substances:"Mean Substances per Incident",
+  polysub_incidents:"Polysubstance Incidents (2020-2025)",
+  naloxone_gap:"Naloxone Gap Score",
+  naloxone_opioid_total:"Total Naloxone Administrations (2020-2025)",
+  est_kits_needed_annual_high:"Naloxone Kits Needed - HIGH ESTIMATE (annual, recommended for planning)",
+  est_kits_needed_annual_median:"Naloxone Kits Needed - median estimate (annual)",
+  kits_need_min_floor:"Naloxone Kits Needed - minimum floor (annual)",
   expected_opioid_ods_annual:"Expected Annual Opioid ODs",
-  F2018_2025_all_fatal:"Fatal ODs 2018–2025",crude_rate_all_fatal_per100k:"Fatal OD Rate per 100k",
-  F2018_2025_opioid:"Opioid Fatal ODs 2018–2025",F2018_2025_psychostimulant:"Stimulant Fatal ODs 2018–2025",
-  F2018_2025_cocaine:"Cocaine Fatal ODs 2018–2025",F2018_2025_benzo:"Benzo Fatal ODs 2018–2025",
-  visits_6yr:"ED Visits (2020–2025)",unique_pts_6yr:"Unique ED Patients (2020–2025)",
-  visits_2425:"ED Visits 2024–25",ess_trend_flag:"ED Trend",ess_cagr_2020_2025:"ED CAGR 2020–2025",
-  pct_opioid_6yr:"% ED – Opioid",pct_stimulant_6yr:"% ED – Stimulant",
-  pct_alcohol_6yr:"% ED – Alcohol",pct_polysubstance_6yr:"% ED – Polysubstance",
-  pct_mental_health_6yr:"% ED – Mental Health",avg_los_days_6yr:"Avg ED Stay (days)",
-  pct_disp_admitted_6yr:"% Admitted from ED",pct_suicide_att_6yr:"% ED – Suicide Attempt",
-  SpikeEvents_2021:"Spike Events 2021",SpikeEvents_2022:"Spike Events 2022",
-  SpikeEvents_2023:"Spike Events 2023",SpikeEvents_2024:"Spike Events 2024",SpikeEvents_2025:"Spike Events 2025",
-  net_dominant_drug:"Dominant Drug",net_bridge_drug:"Bridge Drug",net_shape:"Network Shape",
-  net_density:"Network Density",net_strongest_pair:"Strongest Drug Pair",
-  p_opioid_dom:"P(Opioid Dominant)",p_stimulant_dom:"P(Stimulant Dominant)",
-  past_mean:"Past Period Mean (2020–22)",recent_mean:"Recent Period Mean (2023–25)",
-  signal_total_2425:"Signal Score 2024–25",
-  F25to34_2018_2025:"Fatal ODs Age 25–34",F35to44_2018_2025:"Fatal ODs Age 35–44",
-  F45to54_2018_2025:"Fatal ODs Age 45–54",male_2018_2025:"Fatal ODs – Male",
-  female_2018_2025:"Fatal ODs – Female",hispanic_2018_2025:"Fatal ODs – Hispanic",
-  NH_White_2018_2025:"Fatal ODs – NH White",NH_Black_2018_2025:"Fatal ODs – NH Black",
-  visits_12_17_2425:"ED Visits Age 12–17 (2024–25)",visits_18_25_2425:"ED Visits Age 18–25 (2024–25)",
-  visits_hispanic_6yr:"ED Visits – Hispanic (2020–2025)",visits_nh_white_6yr:"ED Visits – NH White (2020–2025)",
-  visits_nh_black_6yr:"ED Visits – NH Black (2020–2025)",
-  visits_male_6yr:"ED Visits – Male (2020–2025)",visits_female_6yr:"ED Visits – Female (2020–2025)",
-  visits_18_25_6yr:"ED Visits Age 18–25 (2020–2025)",visits_26_34_6yr:"ED Visits Age 26–34 (2020–2025)",
-  visits_35_44_6yr:"ED Visits Age 35–44 (2020–2025)",visits_45_54_6yr:"ED Visits Age 45–54 (2020–2025)",
+  F2018_2025_all_fatal:"Fatal ODs 2018-2025",
+  crude_rate_all_fatal_per100k:"Fatal OD Rate per 100k",
+  F2018_2025_opioid:"Opioid Fatal ODs 2018-2025",
+  F2018_2025_psychostimulant:"Stimulant Fatal ODs 2018-2025",
+  F2018_2025_cocaine:"Cocaine Fatal ODs 2018-2025",
+  F2018_2025_benzo:"Benzo Fatal ODs 2018-2025",
+  visits_6yr:"ED Visits (2020-2025)",
+  unique_pts_6yr:"Unique ED Patients (2020-2025)",
+  visits_2425:"ED Visits 2024-25",
+  ess_trend_flag:"ED Trend",
+  ess_cagr_2020_2025:"ED CAGR 2020-2025",
+  pct_opioid_6yr:"% ED - Opioid",
+  pct_stimulant_6yr:"% ED - Stimulant",
+  pct_alcohol_6yr:"% ED - Alcohol",
+  pct_polysubstance_6yr:"% ED - Polysubstance",
+  pct_mental_health_6yr:"% ED - Mental Health",
+  avg_los_days_6yr:"Avg ED Stay (days)",
+  pct_disp_admitted_6yr:"% Admitted from ED",
+  pct_suicide_att_6yr:"% ED - Suicide Attempt",
+  SpikeEvents_2021:"Spike Events 2021", SpikeEvents_2022:"Spike Events 2022",
+  SpikeEvents_2023:"Spike Events 2023", SpikeEvents_2024:"Spike Events 2024", SpikeEvents_2025:"Spike Events 2025",
+  net_dominant_drug:"Dominant Drug",
+  net_bridge_drug:"Bridge Drug",
+  net_shape:"Network Shape",
+  net_density:"Network Density",
+  net_strongest_pair:"Strongest Drug Pair (Jaccard)",
+  net_strongest_j:"Strongest Pair Jaccard Score",
+  p_opioid_dom:"P(Opioid Dominant)",
+  p_stimulant_dom:"P(Stimulant Dominant)",
+  past_mean:"Past Period Mean (2020-22)",
+  recent_mean:"Recent Period Mean (2023-25)",
+  signal_total_2425:"Signal Score 2024-25",
+  F25to34_2018_2025:"Fatal ODs Age 25-34",
+  F35to44_2018_2025:"Fatal ODs Age 35-44",
+  F45to54_2018_2025:"Fatal ODs Age 45-54",
+  male_2018_2025:"Fatal ODs - Male",
+  female_2018_2025:"Fatal ODs - Female",
+  hispanic_2018_2025:"Fatal ODs - Hispanic",
+  NH_White_2018_2025:"Fatal ODs - NH White",
+  NH_Black_2018_2025:"Fatal ODs - NH Black",
+  visits_12_17_2425:"ED Visits Age 12-17 (2024-25)",
+  visits_18_25_2425:"ED Visits Age 18-25 (2024-25)",
+  visits_hispanic_6yr:"ED Visits - Hispanic (2020-2025)",
+  visits_nh_white_6yr:"ED Visits - NH White (2020-2025)",
+  visits_nh_black_6yr:"ED Visits - NH Black (2020-2025)",
+  visits_male_6yr:"ED Visits - Male (2020-2025)",
+  visits_female_6yr:"ED Visits - Female (2020-2025)",
+  visits_18_25_6yr:"ED Visits Age 18-25 (2020-2025)",
+  visits_26_34_6yr:"ED Visits Age 26-34 (2020-2025)",
+  visits_35_44_6yr:"ED Visits Age 35-44 (2020-2025)"
 };
 
 const KEY_DISPLAY_FIELDS = [
@@ -218,45 +255,44 @@ const KEY_DISPLAY_FIELDS = [
 
 const TOPIC_FIELDS = {
   core: ["incidents_total","rate_total_per1k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","suppress_small_total","no_essence_data"],
-  drugs: ["Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","unique_substances_present","mean_substances","polysub_incidents","net_dominant_drug","net_bridge_drug","net_strongest_pair","p_opioid_dom","p_stimulant_dom","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
+  drugs: ["Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","unique_substances_present","mean_substances","polysub_incidents","net_dominant_drug","net_bridge_drug","p_opioid_dom","p_stimulant_dom","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
   trends: ["odmap_cagr_2020_2025","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","rate_2020_per1k","rate_2021_per1k","rate_2022_per1k","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
   naloxone: ["naloxone_opioid_total","naloxone_gap","est_kits_needed_annual_high","est_kits_needed_annual_median","kits_need_min_floor","expected_opioid_ods_annual","naloxone_opioid_rate","opioid_incidents","F2018_2025_opioid"],
   fatal: ["F2018_2025_all_fatal","F2018_2025_unintentional","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","F2018_2025_cocaine","F2018_2025_benzo","F2024_all_fatal","F2023_all_fatal","F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025"],
   ed: ["visits_6yr","unique_pts_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_alcohol_6yr","pct_polysubstance_6yr","pct_mental_health_6yr","avg_los_days_6yr","pct_disp_admitted_6yr","pct_suicide_att_6yr","visits_male_6yr","visits_female_6yr","visits_hispanic_6yr","visits_nh_white_6yr","visits_nh_black_6yr","visits_18_25_6yr","visits_26_34_6yr","visits_35_44_6yr","visits_12_17_2425","visits_18_25_2425"],
   demographics: ["F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025","visits_12_17_2425","visits_18_25_2425","visits_hispanic_6yr","visits_nh_white_6yr","visits_nh_black_6yr","visits_male_6yr","visits_female_6yr","visits_18_25_6yr","visits_26_34_6yr","visits_35_44_6yr"],
   spikes: ["SpikeEvents_2021","SpikeEvents_2022","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","signal_total_2425","burden_tier","burden_high","past_mean","recent_mean"],
-  network: ["ecosystem_type","dominance_direction","net_dominant_drug","net_bridge_drug","net_shape","net_density","net_strongest_pair","p_opioid_dom","p_stimulant_dom","dominance_confidence","unique_substances_present"],
-  intervention: ["burden_tier","ecosystem_type","naloxone_gap","est_kits_needed_annual_high","est_kits_needed_annual_median","expected_opioid_ods_annual","odmap_trend_flag","odmap_cagr_2020_2025","signal_total_2425","pct_mental_health_6yr","pct_suicide_att_6yr","net_bridge_drug","dominance_direction","SpikeEvents_2025","Opioid","Methamphetamine","polysub_incidents","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"],
-  polysubstance: ["polysub_incidents","mean_substances","unique_substances_present","net_strongest_pair","net_bridge_drug","net_density","p_opioid_dom","p_stimulant_dom"],
+  network: ["ecosystem_type","dominance_direction","net_dominant_drug","net_bridge_drug","net_shape","net_density","net_strongest_pair","net_strongest_j","p_opioid_dom","p_stimulant_dom","dominance_confidence","unique_substances_present"],
+  polysubstance: ["polysub_incidents","mean_substances","unique_substances_present","net_bridge_drug","net_density","p_opioid_dom","p_stimulant_dom"],
+  intervention: ["burden_tier","ecosystem_type","naloxone_gap","est_kits_needed_annual_high","est_kits_needed_annual_median","expected_opioid_ods_annual","odmap_trend_flag","odmap_cagr_2020_2025","signal_total_2425","pct_mental_health_6yr","pct_suicide_att_6yr","net_bridge_drug","dominance_direction","SpikeEvents_2025","Opioid","Methamphetamine","polysub_incidents","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"]
 };
 
-// ── State ──────────────────────────────────────────────────────────────────
-let countyData = null;
-let tractData  = null;
-let stateAvgs  = {};
-let sessionFIPS = null;
-let sessionCountyName = null;
-let mapCounter = 0;
-let isLoading = false;
+var countyData = null;
+var tractData = null;
+var stateAvgs = {};
+var sessionFIPS = null;
+var sessionCountyName = null;
+var mapCounter = 0;
+var isLoading = false;
 
-// ── CSV Parser ─────────────────────────────────────────────────────────────
 function parseCSV(text) {
-  const lines = text.split(/\r?\n/);
+  var lines = text.split(/\r?\n/);
   if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g,""));
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
+  var headers = lines[0].split(",").map(function(h) { return h.trim().replace(/^"|"$/g,""); });
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue;
-    const vals = []; let cur = "", inQ = false;
-    for (const c of lines[i]) {
+    var vals = [], cur = "", inQ = false;
+    for (var ci = 0; ci < lines[i].length; ci++) {
+      var c = lines[i][ci];
       if (c === '"') { inQ = !inQ; }
       else if (c === ',' && !inQ) { vals.push(cur); cur = ""; }
       else cur += c;
     }
     vals.push(cur);
-    const row = {};
-    headers.forEach((h, idx) => {
-      const v = (vals[idx] || "").trim().replace(/^"|"$/g,"");
+    var row = {};
+    headers.forEach(function(h, idx) {
+      var v = (vals[idx] || "").trim().replace(/^"|"$/g,"");
       if (v === "" || v === "NULL" || v === "null" || v === "NA") row[h] = null;
       else if (!isNaN(v) && v !== "") row[h] = parseFloat(v);
       else row[h] = v;
@@ -267,10 +303,11 @@ function parseCSV(text) {
 }
 
 function calcStateAvgs(rows) {
-  const avgs = {};
-  Object.keys(rows[0] || {}).forEach(k => {
-    const vals = rows.map(r => r[k]).filter(v => v !== null && typeof v === "number" && !isNaN(v));
-    if (vals.length) avgs[k] = vals.reduce((a,b) => a+b, 0) / vals.length;
+  var avgs = {};
+  if (!rows.length) return avgs;
+  Object.keys(rows[0]).forEach(function(k) {
+    var vals = rows.map(function(r) { return r[k]; }).filter(function(v) { return v !== null && typeof v === "number" && !isNaN(v); });
+    if (vals.length) avgs[k] = vals.reduce(function(a,b) { return a+b; }, 0) / vals.length;
   });
   return avgs;
 }
@@ -280,36 +317,31 @@ function padFIPS(val) {
   return String(parseInt(val)).padStart(5,"0");
 }
 
-// ── Detection ──────────────────────────────────────────────────────────────
 function detectLocation(text) {
-  const lower = text.toLowerCase();
-  for (const [county, fips] of Object.entries(COUNTY_FIPS)) {
-    if (lower.includes(county.toLowerCase()+" county") || lower.includes(county.toLowerCase()))
-      return { fips, countyName: county };
+  var lower = text.toLowerCase();
+  var counties = Object.entries(COUNTY_FIPS);
+  for (var i = 0; i < counties.length; i++) {
+    var county = counties[i][0], fips = counties[i][1];
+    if (lower.includes(county.toLowerCase() + " county") || lower.includes(county.toLowerCase()))
+      return { fips: fips, countyName: county };
   }
-  for (const [city, fips] of Object.entries(CITY_FIPS)) {
-    if (lower.includes(city)) return { fips, countyName: FIPS_COUNTY[fips] };
+  var cities = Object.entries(CITY_FIPS);
+  for (var j = 0; j < cities.length; j++) {
+    var city = cities[j][0], cfips = cities[j][1];
+    if (lower.includes(city)) return { fips: cfips, countyName: FIPS_COUNTY[cfips] };
   }
   return null;
 }
 
 function detectTroop(text) {
-  const lower = text.toLowerCase();
-  const m = lower.match(/troop\s+([a-h])\b/i);
+  var lower = text.toLowerCase();
+  var m = lower.match(/troop\s+([a-h])\b/i);
   if (m) return m[1].toUpperCase();
-  // Named HQ cities
-  if (lower.includes("olathe") && lower.includes("troop")) return "A";
-  if (lower.includes("topeka") && lower.includes("troop")) return "B";
-  if (lower.includes("salina") && lower.includes("troop")) return "C";
-  if (lower.includes("hays") && lower.includes("troop")) return "D";
-  if (lower.includes("garden city") && lower.includes("troop")) return "E";
-  if (lower.includes("wichita") && lower.includes("troop")) return "F";
-  if (lower.includes("chanute") && lower.includes("troop")) return "H";
   return null;
 }
 
 function detectTopic(text) {
-  const t = text.toLowerCase();
+  var t = text.toLowerCase();
   if (/tract|neighborhood|hotspot|sub.county|where.*burden|where.*highest|census/.test(t)) return "tract";
   if (/troop|khp|highway patrol/.test(t)) return "troop";
   if (/diagnosis|dx|icd|code|presenting/.test(t)) return "ed";
@@ -326,12 +358,11 @@ function detectTopic(text) {
   return "core";
 }
 
-// ── Formatting ─────────────────────────────────────────────────────────────
 function fmt(val, field) {
-  if (val === null || val === undefined) return "—";
+  if (val === null || val === undefined) return "--";
   if (typeof val === "string") return val;
   if (field && (field.includes("pct_") || field.includes("_cagr") || field.includes("yoy_pct") || field.includes("cagr_2020") || field.includes("cagr_raw"))) {
-    const v = Math.abs(val) <= 5 ? val * 100 : val;
+    var v = Math.abs(val) <= 5 ? val * 100 : val;
     return v.toFixed(1) + "%";
   }
   if (field && (field.includes("per1k") || (field.includes("_rate") && !field.includes("visits")) || field.includes("ratio") || field.includes("gap") || field.includes("density") || field.includes("p_opioid") || field.includes("p_stimulant") || field.includes("confidence"))) {
@@ -340,61 +371,67 @@ function fmt(val, field) {
   return typeof val === "number" ? (val % 1 === 0 ? val.toLocaleString() : val.toFixed(1)) : val;
 }
 
-// ── Paired field blocks ────────────────────────────────────────────────────
 function buildDxBlock(row, suffix) {
-  const label = suffix === "6yr" ? "2020–2025" : "2024–25";
-  const entries = [1,2,3,4,5].map(i => {
-    const code = row[`dx${suffix}_rank${i}`];
-    const n    = row[`dx${suffix}_rank${i}_n`];
-    if (!code || n === null) return null;
-    return `  ${i}. ${code} — ${Math.round(n).toLocaleString()} visits`;
-  }).filter(Boolean);
+  var label = suffix === "6yr" ? "2020-2025" : "2024-25";
+  var entries = [];
+  for (var i = 1; i <= 5; i++) {
+    var code = row["dx" + suffix + "_rank" + i];
+    var n = row["dx" + suffix + "_rank" + i + "_n"];
+    if (code && n !== null) entries.push("  " + i + ". " + code + " -- " + Math.round(n).toLocaleString() + " visits");
+  }
   if (!entries.length) return null;
-  return `Top ED Diagnosis Codes (${label}):\n${entries.join("\n")}`;
+  return "Top ED Diagnosis Codes (" + label + "):\n" + entries.join("\n");
 }
 
 function buildComboBlock(row) {
-  const entries = [1,2,3,4,5].map(i => {
-    const combo = row[`TopCombo_${i}`];
-    const n     = row[`TopCombo_${i}_Incidents`];
-    if (!combo || n === null) return null;
-    return `  ${i}. ${combo} — ${Math.round(n).toLocaleString()} incidents`;
-  }).filter(Boolean);
+  var entries = [];
+  for (var i = 1; i <= 5; i++) {
+    var combo = row["TopCombo_" + i];
+    var n = row["TopCombo_" + i + "_Incidents"];
+    if (combo && n !== null) entries.push("  " + i + ". " + combo + " -- " + Math.round(n).toLocaleString() + " incidents");
+  }
   if (!entries.length) return null;
-  return `Top Polysubstance Combinations (2020–2025):\n${entries.join("\n")}`;
+  return "Top Polysubstance Combinations by Incident Count (2020-2025):\n" + entries.join("\n");
 }
 
 function buildDataSummary(row, topic) {
-  const skipFields = new Set([
-    "TopCombo_1","TopCombo_2","TopCombo_3","TopCombo_4","TopCombo_5",
-    "TopCombo_1_Incidents","TopCombo_2_Incidents","TopCombo_3_Incidents","TopCombo_4_Incidents","TopCombo_5_Incidents",
-    "dx6yr_rank1","dx6yr_rank2","dx6yr_rank3","dx6yr_rank4","dx6yr_rank5",
-    "dx6yr_rank1_n","dx6yr_rank2_n","dx6yr_rank3_n","dx6yr_rank4_n","dx6yr_rank5_n",
-    "dx2425_rank1","dx2425_rank2","dx2425_rank3","dx2425_rank4","dx2425_rank5",
-    "dx2425_rank1_n","dx2425_rank2_n","dx2425_rank3_n","dx2425_rank4_n","dx2425_rank5_n",
-  ]);
+  var skipFields = {
+    "TopCombo_1":1,"TopCombo_2":1,"TopCombo_3":1,"TopCombo_4":1,"TopCombo_5":1,
+    "TopCombo_1_Incidents":1,"TopCombo_2_Incidents":1,"TopCombo_3_Incidents":1,"TopCombo_4_Incidents":1,"TopCombo_5_Incidents":1,
+    "dx6yr_rank1":1,"dx6yr_rank2":1,"dx6yr_rank3":1,"dx6yr_rank4":1,"dx6yr_rank5":1,
+    "dx6yr_rank1_n":1,"dx6yr_rank2_n":1,"dx6yr_rank3_n":1,"dx6yr_rank4_n":1,"dx6yr_rank5_n":1,
+    "dx2425_rank1":1,"dx2425_rank2":1,"dx2425_rank3":1,"dx2425_rank4":1,"dx2425_rank5":1,
+    "dx2425_rank1_n":1,"dx2425_rank2_n":1,"dx2425_rank3_n":1,"dx2425_rank4_n":1,"dx2425_rank5_n":1
+  };
 
-  const fields = [...new Set([...TOPIC_FIELDS.core, ...(TOPIC_FIELDS[topic] || [])])];
-  const lines = fields.filter(f => !skipFields.has(f)).map(f => {
-    const val = row[f];
-    const avg = stateAvgs[f];
-    const label = FIELD_LABELS[f] || f;
-    let line = `${label}: ${fmt(val, f)}`;
+  var coreFields = TOPIC_FIELDS.core;
+  var topicFields = TOPIC_FIELDS[topic] || [];
+  var seen = {};
+  var fields = [];
+  coreFields.concat(topicFields).forEach(function(f) {
+    if (!seen[f]) { seen[f] = true; fields.push(f); }
+  });
+
+  var lines = fields.filter(function(f) { return !skipFields[f]; }).map(function(f) {
+    var val = row[f];
+    var avg = stateAvgs[f];
+    var label = FIELD_LABELS[f] || f;
+    var line = label + ": " + fmt(val, f);
     if (avg !== undefined && typeof val === "number") {
-      const flag = val > avg * 1.1 ? " ⬆ ABOVE KS AVG" : val < avg * 0.9 ? " ⬇ BELOW KS AVG" : " (near KS avg)";
-      line += ` (KS avg: ${fmt(avg, f)}${flag})`;
+      var flag = val > avg * 1.1 ? " UP ABOVE KS AVG" : val < avg * 0.9 ? " DOWN BELOW KS AVG" : " (near KS avg)";
+      line += " (KS avg: " + fmt(avg, f) + flag + ")";
     }
     return line;
   });
 
   if (["ed","intervention","core"].includes(topic)) {
-    const dx6 = buildDxBlock(row, "6yr");
-    const dx24 = buildDxBlock(row, "2425");
-    if (dx6)  lines.push("\n" + dx6);
+    var dx6 = buildDxBlock(row, "6yr");
+    var dx24 = buildDxBlock(row, "2425");
+    if (dx6) lines.push("\n" + dx6);
     if (dx24) lines.push(dx24);
   }
   if (["drugs","network","polysubstance","intervention","core"].includes(topic)) {
-    const combo = buildComboBlock(row);
+    var combo = buildComboBlock(row);
     if (combo) lines.push("\n" + combo);
   }
   return lines.join("\n");
@@ -402,547 +439,82 @@ function buildDataSummary(row, topic) {
 
 function buildTractSummary(countyFIPS) {
   if (!tractData) return null;
-  const countyNum = parseInt(countyFIPS.slice(2));
-  const tracts = tractData.filter(r => r.COUNTY_FIPS !== null && parseInt(r.COUNTY_FIPS) === countyNum);
+  var countyNum = parseInt(countyFIPS.slice(2));
+  var tracts = tractData.filter(function(r) { return r.COUNTY_FIPS !== null && parseInt(r.COUNTY_FIPS) === countyNum; });
   if (!tracts.length) return "No census tract data available for this county.";
-  const suppressed = tracts.filter(r => r.suppress_small_total === 1 || r.burden_tier === null);
-  const active = tracts.filter(r => r.suppress_small_total !== 1 && r.burden_tier !== null);
-  active.sort((a,b) => (b.eb_rate_total_per1k || 0) - (a.eb_rate_total_per1k || 0));
-  const top5 = active.slice(0,5);
-  const topNaloxone = [...active].sort((a,b) => (b.est_kits_needed_annual_median || 0) - (a.est_kits_needed_annual_median || 0)).slice(0,3);
-  let out = `CENSUS TRACT BREAKDOWN:\nTotal tracts: ${tracts.length} | Reportable: ${active.length} | Suppressed: ${suppressed.length}\n\n`;
-  out += `TOP 5 TRACTS BY OVERDOSE BURDEN (EB rate/1k):\n`;
-  top5.forEach((t,i) => {
-    out += `${i+1}. Tract ${t.TRACT_FIPS || t.FIPS}: EB Rate=${fmt(t.eb_rate_total_per1k,"per1k")}, Burden=${t.burden_tier||"—"}, Ecosystem=${t.ecosystem_type||"—"}, Incidents(2020-2025)=${fmt(t.incidents_total,"")}, Dominant Drug=${t.net_dominant_drug||"—"}\n`;
+  var suppressed = tracts.filter(function(r) { return r.suppress_small_total === 1 || r.burden_tier === null; });
+  var active = tracts.filter(function(r) { return r.suppress_small_total !== 1 && r.burden_tier !== null; });
+  active.sort(function(a,b) { return (b.eb_rate_total_per1k||0) - (a.eb_rate_total_per1k||0); });
+  var top5 = active.slice(0,5);
+  var topNaloxone = active.slice().sort(function(a,b) { return (b.est_kits_needed_annual_median||0) - (a.est_kits_needed_annual_median||0); }).slice(0,3);
+  var out = "CENSUS TRACT BREAKDOWN:\nTotal tracts: " + tracts.length + " | Reportable: " + active.length + " | Suppressed: " + suppressed.length + "\n\n";
+  out += "TOP 5 TRACTS BY OVERDOSE BURDEN (EB rate/1k):\n";
+  top5.forEach(function(t,i) {
+    out += (i+1) + ". Tract " + (t.TRACT_FIPS||t.FIPS) + ": EB Rate=" + fmt(t.eb_rate_total_per1k,"per1k") + ", Burden=" + (t.burden_tier||"--") + ", Ecosystem=" + (t.ecosystem_type||"--") + ", Incidents(2020-2025)=" + fmt(t.incidents_total,"") + ", Dominant Drug=" + (t.net_dominant_drug||"--") + "\n";
   });
-  out += `\nTOP 3 TRACTS BY NALOXONE NEED (kits/year, median):\n`;
-  topNaloxone.forEach((t,i) => {
-    out += `${i+1}. Tract ${t.TRACT_FIPS || t.FIPS}: Kits/yr=${fmt(t.est_kits_needed_annual_median,"")}, Naloxone Gap=${fmt(t.naloxone_gap,"gap")}, Expected Opioid ODs/yr=${fmt(t.expected_opioid_ods_annual,"")}\n`;
+  out += "\nTOP 3 TRACTS BY NALOXONE NEED (kits/year, median):\n";
+  topNaloxone.forEach(function(t,i) {
+    out += (i+1) + ". Tract " + (t.TRACT_FIPS||t.FIPS) + ": Kits/yr=" + fmt(t.est_kits_needed_annual_median,"") + ", Naloxone Gap=" + fmt(t.naloxone_gap,"gap") + ", Expected Opioid ODs/yr=" + fmt(t.expected_opioid_ods_annual,"") + "\n";
   });
-  if (suppressed.length) out += `\nNote: ${suppressed.length} tract(s) suppressed due to small counts.\n`;
+  if (suppressed.length) out += "\nNote: " + suppressed.length + " tract(s) suppressed due to small counts.\n";
   return out;
 }
 
 function buildTroopSummary(troopLetter) {
-  const troop = KHP_TROOPS[troopLetter];
+  var troop = KHP_TROOPS[troopLetter];
   if (!troop || !countyData) return null;
-  const rows = troop.counties.map(fips => ({
-    fips, name: FIPS_COUNTY[fips] || fips,
-    row: countyData.find(r => padFIPS(r.FIPS) === fips)
-  }));
-  let out = `KHP ${troop.name} — ${troop.counties.length} counties:\n\n`;
-  rows.forEach(({ name, row }) => {
-    if (!row) { out += `${name} County: [No data]\n`; return; }
+  var out = "KHP " + troop.name + " -- " + troop.counties.length + " counties:\n\n";
+  troop.counties.forEach(function(fips) {
+    var name = FIPS_COUNTY[fips] || fips;
+    var row = countyData.find(function(r) { return padFIPS(r.FIPS) === fips; });
+    if (!row) { out += name + " County: [No data]\n"; return; }
     if (row.suppress_small_total === 1) {
-      out += `${name} County: [SUPPRESSED] Burden=${row.burden_tier||"—"}\n`;
+      out += name + " County: [SUPPRESSED] Burden=" + (row.burden_tier||"--") + "\n";
     } else {
-      out += `${name} County: Incidents(2020-2025)=${fmt(row.incidents_total,"")}, Rate/1k=${fmt(row.rate_total_per1k,"per1k")}, Burden=${row.burden_tier||"—"}, Trend=${row.odmap_trend_flag||"—"}, Top Drug=${row.net_dominant_drug||"—"}, CAGR=${fmt(row.odmap_cagr_2020_2025,"cagr_2020")}\n`;
+      out += name + " County: Incidents(2020-2025)=" + fmt(row.incidents_total,"") + ", Rate/1k=" + fmt(row.rate_total_per1k,"per1k") + ", Burden=" + (row.burden_tier||"--") + ", Trend=" + (row.odmap_trend_flag||"--") + ", Top Drug=" + (row.net_dominant_drug||"--") + ", CAGR=" + fmt(row.odmap_cagr_2020_2025,"cagr_2020") + "\n";
     }
   });
   return out;
 }
 
-// ── System prompt ──────────────────────────────────────────────────────────
 function buildSystemPrompt(row, topic, extra) {
-  const county = row.NAME;
-  const pop = (row.population_1 || row.POPULATION || 0).toLocaleString();
-  const troopLetter = FIPS_TO_TROOP[padFIPS(row.FIPS)];
-  const troopName = troopLetter ? KHP_TROOPS[troopLetter].name : "Unknown";
+  var county = row.NAME;
+  var pop = (row.population_1 || row.POPULATION || 0).toLocaleString();
+  var troopLetter = FIPS_TO_TROOP[padFIPS(row.FIPS)];
+  var troopName = troopLetter ? KHP_TROOPS[troopLetter].name : "Unknown";
+  var extraContext = extra ? "\n\nADDITIONAL CONTEXT:\n" + extra : "";
 
-  return `You are KODA, the Kansas Overdose Data Assistant — built by the CDC Foundation's Overdose Response Strategy (ORS) program.
-
-You are speaking with a community partner, public health professional, law enforcement officer, or prevention coalition member about ${county} County, Kansas (population: ${pop}, KHP Troop: ${troopName}).
-
-IMPORTANT DATA NOTES:
-- Incident totals (incidents_total, Opioid, Methamphetamine, etc.) cover 2020–2025 from ODMAP
-- Annual rates (rate_YYYY_per1k) are per 1,000 residents per year
-- Fatal OD data (F2018_2025_*) covers 2018–2025 from KDHE Vital Statistics
-- ED visit data (visits_6yr) covers 2020–2025 from ESSENCE
-- CAGR ≤5 in absolute value means it's stored as a decim<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KODA — Kansas Overdose Data Assistant</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; color: #1a1a1a; height: 100vh; display: flex; flex-direction: column; }
-  header { background: #1a2744; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  header .logo { font-size: 22px; font-weight: 700; letter-spacing: 0.05em; color: #4fc3f7; }
-  header .subtitle { font-size: 12px; color: #90a4c8; line-height: 1.4; }
-  header .ors-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; color: #90a4c8; letter-spacing: 0.05em; }
-  #chat { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-  .msg { display: flex; gap: 12px; max-width: 820px; }
-  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
-  .msg.user .bubble { background: #1a2744; color: white; border-radius: 18px 18px 4px 18px; }
-  .msg.koda .bubble { background: white; border: 1px solid #e0e4ed; border-radius: 18px 18px 18px 4px; }
-  .bubble { padding: 12px 16px; font-size: 14px; line-height: 1.7; max-width: 700px; }
-  .bubble p { margin-bottom: 10px; }
-  .bubble p:last-child { margin-bottom: 0; }
-  .bubble .worth-noting { background: #e8f4fd; border-left: 3px solid #4fc3f7; padding: 8px 12px; border-radius: 0 6px 6px 0; margin-top: 10px; font-size: 13px; }
-  .bubble strong { font-weight: 600; }
-  .avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 2px; }
-  .msg.koda .avatar { background: #1a2744; color: #4fc3f7; }
-  .msg.user .avatar { background: #4fc3f7; color: #1a2744; }
-  .typing { display: flex; align-items: center; gap: 4px; padding: 14px 16px; }
-  .typing span { width: 7px; height: 7px; background: #90a4c8; border-radius: 50%; animation: bounce 1.2s infinite; }
-  .typing span:nth-child(2) { animation-delay: 0.2s; }
-  .typing span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
-  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; margin-top: 12px; }
-  .metric-card { background: #f4f5f7; border-radius: 8px; padding: 10px 12px; }
-  .metric-card .label { font-size: 10px; color: #666; margin-bottom: 3px; line-height: 1.3; }
-  .metric-card .value { font-size: 16px; font-weight: 600; color: #1a2744; }
-  .metric-card .value.high { color: #c0392b; }
-  .metric-card .value.low { color: #27ae60; }
-  .metric-card .compare { font-size: 10px; color: #888; margin-top: 2px; }
-  .suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .chip { padding: 6px 14px; border-radius: 20px; border: 1px solid #c8d0e0; background: white; font-size: 12px; color: #1a2744; cursor: pointer; transition: all 0.15s; }
-  .chip:hover { background: #1a2744; color: white; border-color: #1a2744; }
-  #input-area { padding: 16px 24px; background: white; border-top: 1px solid #e0e4ed; flex-shrink: 0; }
-  #input-row { display: flex; gap: 10px; max-width: 820px; margin: 0 auto; }
-  #user-input { flex: 1; padding: 12px 16px; border: 1px solid #c8d0e0; border-radius: 24px; font-size: 14px; outline: none; font-family: inherit; }
-  #user-input:focus { border-color: #1a2744; }
-  #send-btn { padding: 12px 22px; background: #1a2744; color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
-  #send-btn:disabled { opacity: 0.4; cursor: default; }
-  .disclaimer { font-size: 11px; color: #aaa; text-align: center; margin-top: 8px; max-width: 820px; margin-left: auto; margin-right: auto; }
-  .county-tag { display: inline-block; background: #e8f4fd; color: #1a6b9a; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 6px; font-weight: 500; }
-  #loading-screen { position: fixed; inset: 0; background: #1a2744; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 100; }
-  #loading-screen .logo { font-size: 36px; font-weight: 700; color: #4fc3f7; letter-spacing: 0.05em; }
-  #loading-screen .load-msg { color: #90a4c8; font-size: 14px; }
-  #loading-screen .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .tract-map { width: 100%; height: 320px; border-radius: 8px; margin-top: 12px; border: 1px solid #e0e4ed; }
-  .map-legend { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
-  .map-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; }
-  .map-legend-swatch { width: 14px; height: 14px; border-radius: 2px; flex-shrink: 0; }
-  .map-title { font-size: 12px; font-weight: 600; color: #1a2744; margin-top: 12px; margin-bottom: 4px; }
-</style>
-</head>
-<body>
-
-<div id="loading-screen">
-  <div class="logo">KODA</div>
-  <div class="spinner"></div>
-  <div class="load-msg">Loading Kansas overdose data…</div>
-</div>
-
-<header>
-  <div>
-    <div class="logo">KODA</div>
-    <div class="subtitle">Kansas Overdose Data Assistant</div>
-  </div>
-  <div class="ors-badge">ORS · CDC Foundation</div>
-</header>
-
-<div id="chat"></div>
-
-<div id="input-area">
-  <div id="input-row">
-    <input id="user-input" type="text" placeholder="Tell me your county or city and what you'd like to know…" autocomplete="off" />
-    <button id="send-btn">Send</button>
-  </div>
-  <div class="disclaimer">KODA uses overdose surveillance data. For emergencies call 911. Data reflects ODMAP (2020–2025), ESSENCE, and KDHE Vital Statistics.</div>
-</div>
-
-<script>
-const COUNTY_CSV_URL = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20County%20Data.csv";
-const TRACT_CSV_URL  = "https://raw.githubusercontent.com/dgering90/koda/main/Kansas%20Tract%20Data.csv";
-const WORKER_URL = "https://koda-proxy.dgering.workers.dev";
-
-// ── KHP Troops (verified from KHP official website) ────────────────────────
-const KHP_TROOPS = {
-  "A": { name:"Troop A – Olathe (KC Metro)",         counties:["20103","20209","20121","20091"] },
-  "B": { name:"Troop B – Topeka (NE Kansas)",         counties:["20131","20013","20043","20005","20087","20045","20059","20139","20177","20085","20149","20197"] },
-  "C": { name:"Troop C – Salina (N Central Kansas)",  counties:["20017","20027","20029","20041","20053","20061","20089","20105","20115","20117","20113","20123","20127","20143","20157","20161","20169","20201"] },
-  "D": { name:"Troop D – Hays (NW Kansas)",           counties:["20023","20039","20051","20063","20065","20109","20137","20141","20147","20153","20163","20167","20179","20181","20183","20193","20195","20199"] },
-  "E": { name:"Troop E – Garden City (SW Kansas)",    counties:["20025","20033","20047","20055","20057","20067","20069","20071","20075","20081","20083","20093","20097","20101","20119","20129","20135","20145","20165","20171","20175","20187","20189"] },
-  "F": { name:"Troop F – Wichita (S Central Kansas)", counties:["20007","20009","20015","20035","20077","20079","20095","20151","20155","20159","20173","20185","20191"] },
-  "H": { name:"Troop H – Chanute (SE Kansas)",        counties:["20001","20003","20011","20019","20021","20031","20049","20073","20099","20107","20111","20125","20133","20205","20207"] },
-};
-const FIPS_TO_TROOP = {};
-Object.entries(KHP_TROOPS).forEach(([l,t]) => t.counties.forEach(f => FIPS_TO_TROOP[f] = l));
-
-// ── County lookups ─────────────────────────────────────────────────────────
-const COUNTY_FIPS = {
-  "Allen":"20001","Anderson":"20003","Atchison":"20005","Barber":"20007","Barton":"20009",
-  "Bourbon":"20011","Brown":"20013","Butler":"20015","Chase":"20017","Chautauqua":"20019",
-  "Cherokee":"20021","Cheyenne":"20023","Clark":"20025","Clay":"20027","Cloud":"20029",
-  "Coffey":"20031","Comanche":"20033","Cowley":"20035","Crawford":"20037","Decatur":"20039",
-  "Dickinson":"20041","Doniphan":"20043","Douglas":"20045","Edwards":"20047","Elk":"20049",
-  "Ellis":"20051","Ellsworth":"20053","Finney":"20055","Ford":"20057","Franklin":"20059",
-  "Geary":"20061","Gove":"20063","Graham":"20065","Grant":"20067","Gray":"20069",
-  "Greeley":"20071","Greenwood":"20073","Hamilton":"20075","Harper":"20077","Harvey":"20079",
-  "Haskell":"20081","Hodgeman":"20083","Jackson":"20085","Jefferson":"20087","Jewell":"20089",
-  "Johnson":"20091","Kearny":"20093","Kingman":"20095","Kiowa":"20097","Labette":"20099",
-  "Lane":"20101","Leavenworth":"20103","Lincoln":"20105","Linn":"20107","Logan":"20109",
-  "Lyon":"20111","Marion":"20115","Marshall":"20117","McPherson":"20113","Meade":"20119",
-  "Miami":"20121","Mitchell":"20123","Montgomery":"20125","Morris":"20127","Morton":"20129",
-  "Nemaha":"20131","Neosho":"20133","Ness":"20135","Norton":"20137","Osage":"20139",
-  "Osborne":"20141","Ottawa":"20143","Pawnee":"20145","Phillips":"20147","Pottawatomie":"20149",
-  "Pratt":"20151","Rawlins":"20153","Reno":"20155","Republic":"20157","Rice":"20159",
-  "Riley":"20161","Rooks":"20163","Rush":"20165","Russell":"20167","Saline":"20169",
-  "Scott":"20171","Sedgwick":"20173","Seward":"20175","Shawnee":"20177","Sheridan":"20179",
-  "Sherman":"20181","Smith":"20183","Stafford":"20185","Stanton":"20187","Stevens":"20189",
-  "Sumner":"20191","Thomas":"20193","Trego":"20195","Wabaunsee":"20197","Wallace":"20199",
-  "Washington":"20201","Wichita":"20203","Wilson":"20205","Woodson":"20207","Wyandotte":"20209"
-};
-const FIPS_COUNTY = Object.fromEntries(Object.entries(COUNTY_FIPS).map(([k,v])=>[v,k]));
-
-const CITY_FIPS = {
-  "wichita":"20173","derby":"20173","andover":"20173","haysville":"20173","valley center":"20173","maize":"20173","goddard":"20173","cheney":"20173","mulvane":"20173",
-  "overland park":"20091","olathe":"20091","shawnee":"20091","lenexa":"20091","leawood":"20091","merriam":"20091","prairie village":"20091","gardner":"20091","spring hill":"20091","de soto":"20091","desoto":"20091","mission":"20091","roeland park":"20091",
-  "kansas city":"20209","bonner springs":"20209","edwardsville":"20209",
-  "topeka":"20177","auburn":"20177","silver lake":"20177","rossville":"20177","meriden":"20177",
-  "lawrence":"20045","eudora":"20045","baldwin city":"20045","lecompton":"20045",
-  "manhattan":"20161","ogden":"20161","junction city":"20061","milford":"20061",
-  "salina":"20169","hutchinson":"20155","nickerson":"20155","haven":"20155","buhler":"20155","south hutchinson":"20155",
-  "leavenworth":"20103","lansing":"20103","basehor":"20103","tonganoxie":"20087","oskaloosa":"20087",
-  "emporia":"20111","council grove":"20127",
-  "pittsburg":"20037","columbus":"20021","parsons":"20099","independence":"20125","coffeyville":"20125",
-  "liberal":"20175","ulysses":"20067","garden city":"20055","dodge city":"20057","hays":"20051",
-  "great bend":"20009","larned":"20145","pratt":"20151","kingman":"20095",
-  "el dorado":"20015","augusta":"20015","winfield":"20035","arkansas city":"20035","wellington":"20191",
-  "newton":"20079","halstead":"20079","hesston":"20079",
-  "fort scott":"20011","chanute":"20133","iola":"20001","ottawa":"20059","paola":"20121","garnett":"20003",
-  "atchison":"20005","hiawatha":"20013","horton":"20013","holton":"20085",
-  "abilene":"20041","chapman":"20041","mcpherson":"20113","lyons":"20159","ellsworth":"20053",
-  "colby":"20193","goodland":"20065","oakley":"20101","scott city":"20171",
-  "oberlin":"20039","norton":"20137","phillipsburg":"20147","beloit":"20123","concordia":"20029",
-  "clay center":"20027","marysville":"20117","seneca":"20131","sabetha":"20131",
-  "osage city":"20139","burlington":"20031","yates center":"20207","fredonia":"20205",
-  "erie":"20049","sedan":"20019","caney":"20125",
-  "minneapolis":"20143","russell":"20167","ellis":"20051",
-  "wakeeney":"20195","stockton":"20163","hill city":"20065","quinter":"20063",
-  "lakin":"20093","syracuse":"20187","sublette":"20081","ashland":"20025","coldwater":"20033",
-  "kinsley":"20047","stafford":"20185","st john":"20185","saint john":"20185",
-  "medicine lodge":"20007","anthony":"20077","harper":"20077",
-  "cimarron":"20057","meade":"20119","kismet":"20175",
-  "leoti":"20203","tribune":"20071","sharon springs":"20199",
-  "belleville":"20157","mankato":"20089","osborne":"20141","smith center":"20183"
-};
-
-// ── Field labels ───────────────────────────────────────────────────────────
-const FIELD_LABELS = {
-  incidents_total:"Total OD Incidents (2020–2025)",rate_total_per1k:"Rate per 1,000 (2020–2025)",
-  eb_rate_total_per100k:"EB Rate per 100k",burden_tier:"Burden Tier",
-  ecosystem_type:"Drug Ecosystem Type",dominance_direction:"Dominant Drug Class",
-  odmap_trend_flag:"Trend Direction",odmap_cagr_2020_2025:"CAGR 2020–2025",
-  rate_2020_per1k:"Rate/1k 2020",rate_2021_per1k:"Rate/1k 2021",rate_2022_per1k:"Rate/1k 2022",
-  rate_2023_per1k:"Rate/1k 2023",rate_2024_per1k:"Rate/1k 2024",rate_2025_per1k:"Rate/1k 2025",
-  odmap_yoy_pct_change_2024:"YoY % Change 2024",odmap_yoy_pct_change_2025:"YoY % Change 2025",
-  Opioid:"Opioid Incidents (2020–2025)",Methamphetamine:"Meth Incidents (2020–2025)",
-  Benzodiazepine:"Benzo Incidents (2020–2025)",Cocaine:"Cocaine Incidents (2020–2025)",
-  Alcohol:"Alcohol Incidents (2020–2025)",Synthetic_Marijuana:"Synthetic MJ Incidents (2020–2025)",
-  unique_substances_present:"Unique Substances Present",
-  mean_substances:"Mean Substances/Incident",polysub_incidents:"Polysubstance Incidents (2020–2025)",
-  naloxone_gap:"Naloxone Gap Score",naloxone_opioid_total:"Total Naloxone Administrations (2020–2025)",
-  "est_kits_needed_annual_high":"Naloxone Kits Needed — HIGH ESTIMATE (annual, recommended for planning)",
-  "est_kits_needed_annual_median":"Naloxone Kits Needed — median estimate (annual)",
-  "kits_need_min_floor":"Naloxone Kits Needed — minimum floor (annual)",
-  expected_opioid_ods_annual:"Expected Annual Opioid ODs",
-  F2018_2025_all_fatal:"Fatal ODs 2018–2025",crude_rate_all_fatal_per100k:"Fatal OD Rate per 100k",
-  F2018_2025_opioid:"Opioid Fatal ODs 2018–2025",F2018_2025_psychostimulant:"Stimulant Fatal ODs 2018–2025",
-  F2018_2025_cocaine:"Cocaine Fatal ODs 2018–2025",F2018_2025_benzo:"Benzo Fatal ODs 2018–2025",
-  visits_6yr:"ED Visits (2020–2025)",unique_pts_6yr:"Unique ED Patients (2020–2025)",
-  visits_2425:"ED Visits 2024–25",ess_trend_flag:"ED Trend",ess_cagr_2020_2025:"ED CAGR 2020–2025",
-  pct_opioid_6yr:"% ED – Opioid",pct_stimulant_6yr:"% ED – Stimulant",
-  pct_alcohol_6yr:"% ED – Alcohol",pct_polysubstance_6yr:"% ED – Polysubstance",
-  pct_mental_health_6yr:"% ED – Mental Health",avg_los_days_6yr:"Avg ED Stay (days)",
-  pct_disp_admitted_6yr:"% Admitted from ED",pct_suicide_att_6yr:"% ED – Suicide Attempt",
-  SpikeEvents_2021:"Spike Events 2021",SpikeEvents_2022:"Spike Events 2022",
-  SpikeEvents_2023:"Spike Events 2023",SpikeEvents_2024:"Spike Events 2024",SpikeEvents_2025:"Spike Events 2025",
-  net_dominant_drug:"Dominant Drug",net_bridge_drug:"Bridge Drug",net_shape:"Network Shape",
-  net_density:"Network Density",net_strongest_pair:"Strongest Drug Pair",
-  p_opioid_dom:"P(Opioid Dominant)",p_stimulant_dom:"P(Stimulant Dominant)",
-  past_mean:"Past Period Mean (2020–22)",recent_mean:"Recent Period Mean (2023–25)",
-  signal_total_2425:"Signal Score 2024–25",
-  F25to34_2018_2025:"Fatal ODs Age 25–34",F35to44_2018_2025:"Fatal ODs Age 35–44",
-  F45to54_2018_2025:"Fatal ODs Age 45–54",male_2018_2025:"Fatal ODs – Male",
-  female_2018_2025:"Fatal ODs – Female",hispanic_2018_2025:"Fatal ODs – Hispanic",
-  NH_White_2018_2025:"Fatal ODs – NH White",NH_Black_2018_2025:"Fatal ODs – NH Black",
-  visits_12_17_2425:"ED Visits Age 12–17 (2024–25)",visits_18_25_2425:"ED Visits Age 18–25 (2024–25)",
-  visits_hispanic_6yr:"ED Visits – Hispanic (2020–2025)",visits_nh_white_6yr:"ED Visits – NH White (2020–2025)",
-  visits_nh_black_6yr:"ED Visits – NH Black (2020–2025)",
-  visits_male_6yr:"ED Visits – Male (2020–2025)",visits_female_6yr:"ED Visits – Female (2020–2025)",
-  visits_18_25_6yr:"ED Visits Age 18–25 (2020–2025)",visits_26_34_6yr:"ED Visits Age 26–34 (2020–2025)",
-  visits_35_44_6yr:"ED Visits Age 35–44 (2020–2025)",visits_45_54_6yr:"ED Visits Age 45–54 (2020–2025)",
-};
-
-const KEY_DISPLAY_FIELDS = [
-  "rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag",
-  "SpikeEvents_2025","est_kits_needed_annual_high","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"
-];
-
-const TOPIC_FIELDS = {
-  core: ["incidents_total","rate_total_per1k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","suppress_small_total","no_essence_data"],
-  drugs: ["Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","unique_substances_present","mean_substances","polysub_incidents","net_dominant_drug","net_bridge_drug","net_strongest_pair","p_opioid_dom","p_stimulant_dom","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
-  trends: ["odmap_cagr_2020_2025","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","rate_2020_per1k","rate_2021_per1k","rate_2022_per1k","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","past_mean","recent_mean","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","cagr_raw_Opioid_2020_2025","cagr_raw_Methamphetamine_2020_2025"],
-  naloxone: ["naloxone_opioid_total","naloxone_gap","est_kits_needed_annual_high","est_kits_needed_annual_median","kits_need_min_floor","expected_opioid_ods_annual","naloxone_opioid_rate","opioid_incidents","F2018_2025_opioid"],
-  fatal: ["F2018_2025_all_fatal","F2018_2025_unintentional","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","F2018_2025_cocaine","F2018_2025_benzo","F2024_all_fatal","F2023_all_fatal","F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025"],
-  ed: ["visits_6yr","unique_pts_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_alcohol_6yr","pct_polysubstance_6yr","pct_mental_health_6yr","avg_los_days_6yr","pct_disp_admitted_6yr","pct_suicide_att_6yr","visits_male_6yr","visits_female_6yr","visits_hispanic_6yr","visits_nh_white_6yr","visits_nh_black_6yr","visits_18_25_6yr","visits_26_34_6yr","visits_35_44_6yr","visits_12_17_2425","visits_18_25_2425"],
-  demographics: ["F25to34_2018_2025","F35to44_2018_2025","F45to54_2018_2025","male_2018_2025","female_2018_2025","hispanic_2018_2025","NH_White_2018_2025","NH_Black_2018_2025","visits_12_17_2425","visits_18_25_2425","visits_hispanic_6yr","visits_nh_white_6yr","visits_nh_black_6yr","visits_male_6yr","visits_female_6yr","visits_18_25_6yr","visits_26_34_6yr","visits_35_44_6yr"],
-  spikes: ["SpikeEvents_2021","SpikeEvents_2022","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","signal_total_2425","burden_tier","burden_high","past_mean","recent_mean"],
-  network: ["ecosystem_type","dominance_direction","net_dominant_drug","net_bridge_drug","net_shape","net_density","net_strongest_pair","p_opioid_dom","p_stimulant_dom","dominance_confidence","unique_substances_present"],
-  intervention: ["burden_tier","ecosystem_type","naloxone_gap","est_kits_needed_annual_high","est_kits_needed_annual_median","expected_opioid_ods_annual","odmap_trend_flag","odmap_cagr_2020_2025","signal_total_2425","pct_mental_health_6yr","pct_suicide_att_6yr","net_bridge_drug","dominance_direction","SpikeEvents_2025","Opioid","Methamphetamine","polysub_incidents","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"],
-  polysubstance: ["polysub_incidents","mean_substances","unique_substances_present","net_strongest_pair","net_bridge_drug","net_density","p_opioid_dom","p_stimulant_dom"],
-};
-
-// ── State ──────────────────────────────────────────────────────────────────
-let countyData = null;
-let tractData  = null;
-let stateAvgs  = {};
-let sessionFIPS = null;
-let sessionCountyName = null;
-let mapCounter = 0;
-let isLoading = false;
-
-// ── CSV Parser ─────────────────────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g,""));
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const vals = []; let cur = "", inQ = false;
-    for (const c of lines[i]) {
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { vals.push(cur); cur = ""; }
-      else cur += c;
-    }
-    vals.push(cur);
-    const row = {};
-    headers.forEach((h, idx) => {
-      const v = (vals[idx] || "").trim().replace(/^"|"$/g,"");
-      if (v === "" || v === "NULL" || v === "null" || v === "NA") row[h] = null;
-      else if (!isNaN(v) && v !== "") row[h] = parseFloat(v);
-      else row[h] = v;
-    });
-    rows.push(row);
-  }
-  return rows;
+  return "You are KODA, the Kansas Overdose Data Assistant -- built by the CDC Foundation's Overdose Response Strategy (ORS) program.\n\n" +
+    "You are speaking with a community partner, public health professional, law enforcement officer, or prevention coalition member about " + county + " County, Kansas (population: " + pop + ", KHP Troop: " + troopName + ").\n\n" +
+    "IMPORTANT DATA NOTES:\n" +
+    "- Incident totals (incidents_total, Opioid, Methamphetamine, etc.) cover 2020-2025 from ODMAP\n" +
+    "- Annual rates (rate_YYYY_per1k) are per 1,000 residents per year\n" +
+    "- Fatal OD data (F2018_2025_*) covers 2018-2025 from KDHE Vital Statistics\n" +
+    "- ED visit data (visits_6yr) covers 2020-2025 from ESSENCE\n" +
+    "- CAGR values with absolute value <= 5 are stored as decimals -- multiply by 100 for percentage\n" +
+    "- Suppressed data means counts were too small to report reliably\n" +
+    "- When naloxone is asked about, use the HIGH ESTIMATE as the primary planning figure\n" +
+    "- TopCombo_1 through TopCombo_5 are the top polysubstance combinations by RAW INCIDENT COUNT -- always use these when discussing most common combinations\n" +
+    "- net_strongest_pair is the strongest pair by JACCARD SIMILARITY (proportional co-occurrence network metric) -- only reference this when specifically discussing drug network analysis, and always distinguish it from the incident-count-based combos\n" +
+    "- net_bridge_drug is the substance connecting the most other drugs in the network -- useful for intervention targeting\n\n" +
+    "COUNTY DATA (" + county.toUpperCase() + "):\n" +
+    buildDataSummary(row, topic) + extraContext + "\n\n" +
+    "RESPONSE STYLE:\n" +
+    "- Get directly to the data -- skip pleasantries\n" +
+    "- Always specify time periods when citing totals\n" +
+    "- Use specific numbers. Never invent figures not listed above.\n" +
+    "- Compare to Kansas state average when relevant\n" +
+    "- Proactively surface 1-2 insights the user did not ask about but should know\n" +
+    "- When users describe intervention ideas, engage with what the data specifically supports\n" +
+    "- 2-4 focused paragraphs unless detailed breakdown is needed\n" +
+    "- If data is suppressed or unavailable, say so clearly\n" +
+    "- End with a 'Worth noting:' line when there is an actionable insight\n" +
+    "- Professional but direct";
 }
 
-function calcStateAvgs(rows) {
-  const avgs = {};
-  Object.keys(rows[0] || {}).forEach(k => {
-    const vals = rows.map(r => r[k]).filter(v => v !== null && typeof v === "number" && !isNaN(v));
-    if (vals.length) avgs[k] = vals.reduce((a,b) => a+b, 0) / vals.length;
-  });
-  return avgs;
-}
-
-function padFIPS(val) {
-  if (val === null || val === undefined) return null;
-  return String(parseInt(val)).padStart(5,"0");
-}
-
-// ── Detection ──────────────────────────────────────────────────────────────
-function detectLocation(text) {
-  const lower = text.toLowerCase();
-  for (const [county, fips] of Object.entries(COUNTY_FIPS)) {
-    if (lower.includes(county.toLowerCase()+" county") || lower.includes(county.toLowerCase()))
-      return { fips, countyName: county };
-  }
-  for (const [city, fips] of Object.entries(CITY_FIPS)) {
-    if (lower.includes(city)) return { fips, countyName: FIPS_COUNTY[fips] };
-  }
-  return null;
-}
-
-function detectTroop(text) {
-  const lower = text.toLowerCase();
-  const m = lower.match(/troop\s+([a-h])\b/i);
-  if (m) return m[1].toUpperCase();
-  // Named HQ cities
-  if (lower.includes("olathe") && lower.includes("troop")) return "A";
-  if (lower.includes("topeka") && lower.includes("troop")) return "B";
-  if (lower.includes("salina") && lower.includes("troop")) return "C";
-  if (lower.includes("hays") && lower.includes("troop")) return "D";
-  if (lower.includes("garden city") && lower.includes("troop")) return "E";
-  if (lower.includes("wichita") && lower.includes("troop")) return "F";
-  if (lower.includes("chanute") && lower.includes("troop")) return "H";
-  return null;
-}
-
-function detectTopic(text) {
-  const t = text.toLowerCase();
-  if (/tract|neighborhood|hotspot|sub.county|where.*burden|where.*highest|census/.test(t)) return "tract";
-  if (/troop|khp|highway patrol/.test(t)) return "troop";
-  if (/diagnosis|dx|icd|code|presenting/.test(t)) return "ed";
-  if (/polysubstance|combination|combo|co-use|multiple drug/.test(t)) return "polysubstance";
-  if (/naloxone|narcan|kit|distribution|gap/.test(t)) return "naloxone";
-  if (/fatal|death|died|mortality/.test(t)) return "fatal";
-  if (/ed |emergency|hospital|essence|visit/.test(t)) return "ed";
-  if (/demographic|age|gender|race|hispanic|youth|teen/.test(t)) return "demographics";
-  if (/spike|ears|surge|cluster/.test(t)) return "spikes";
-  if (/network|ecosystem|bridge|dominant/.test(t)) return "network";
-  if (/trend|cagr|change|year|trajectory|getting worse|improving/.test(t)) return "trends";
-  if (/meth|opioid|fentanyl|benzo|cocaine|alcohol|drug|substance/.test(t)) return "drugs";
-  if (/intervention|strategy|program|prevention|address|abatement|reduce|plan|fund/.test(t)) return "intervention";
-  return "core";
-}
-
-// ── Formatting ─────────────────────────────────────────────────────────────
-function fmt(val, field) {
-  if (val === null || val === undefined) return "—";
-  if (typeof val === "string") return val;
-  if (field && (field.includes("pct_") || field.includes("_cagr") || field.includes("yoy_pct") || field.includes("cagr_2020") || field.includes("cagr_raw"))) {
-    const v = Math.abs(val) <= 5 ? val * 100 : val;
-    return v.toFixed(1) + "%";
-  }
-  if (field && (field.includes("per1k") || (field.includes("_rate") && !field.includes("visits")) || field.includes("ratio") || field.includes("gap") || field.includes("density") || field.includes("p_opioid") || field.includes("p_stimulant") || field.includes("confidence"))) {
-    return val.toFixed(2);
-  }
-  return typeof val === "number" ? (val % 1 === 0 ? val.toLocaleString() : val.toFixed(1)) : val;
-}
-
-// ── Paired field blocks ────────────────────────────────────────────────────
-function buildDxBlock(row, suffix) {
-  const label = suffix === "6yr" ? "2020–2025" : "2024–25";
-  const entries = [1,2,3,4,5].map(i => {
-    const code = row[`dx${suffix}_rank${i}`];
-    const n    = row[`dx${suffix}_rank${i}_n`];
-    if (!code || n === null) return null;
-    return `  ${i}. ${code} — ${Math.round(n).toLocaleString()} visits`;
-  }).filter(Boolean);
-  if (!entries.length) return null;
-  return `Top ED Diagnosis Codes (${label}):\n${entries.join("\n")}`;
-}
-
-function buildComboBlock(row) {
-  const entries = [1,2,3,4,5].map(i => {
-    const combo = row[`TopCombo_${i}`];
-    const n     = row[`TopCombo_${i}_Incidents`];
-    if (!combo || n === null) return null;
-    return `  ${i}. ${combo} — ${Math.round(n).toLocaleString()} incidents`;
-  }).filter(Boolean);
-  if (!entries.length) return null;
-  return `Top Polysubstance Combinations (2020–2025):\n${entries.join("\n")}`;
-}
-
-function buildDataSummary(row, topic) {
-  const skipFields = new Set([
-    "TopCombo_1","TopCombo_2","TopCombo_3","TopCombo_4","TopCombo_5",
-    "TopCombo_1_Incidents","TopCombo_2_Incidents","TopCombo_3_Incidents","TopCombo_4_Incidents","TopCombo_5_Incidents",
-    "dx6yr_rank1","dx6yr_rank2","dx6yr_rank3","dx6yr_rank4","dx6yr_rank5",
-    "dx6yr_rank1_n","dx6yr_rank2_n","dx6yr_rank3_n","dx6yr_rank4_n","dx6yr_rank5_n",
-    "dx2425_rank1","dx2425_rank2","dx2425_rank3","dx2425_rank4","dx2425_rank5",
-    "dx2425_rank1_n","dx2425_rank2_n","dx2425_rank3_n","dx2425_rank4_n","dx2425_rank5_n",
-  ]);
-
-  const fields = [...new Set([...TOPIC_FIELDS.core, ...(TOPIC_FIELDS[topic] || [])])];
-  const lines = fields.filter(f => !skipFields.has(f)).map(f => {
-    const val = row[f];
-    const avg = stateAvgs[f];
-    const label = FIELD_LABELS[f] || f;
-    let line = `${label}: ${fmt(val, f)}`;
-    if (avg !== undefined && typeof val === "number") {
-      const flag = val > avg * 1.1 ? " ⬆ ABOVE KS AVG" : val < avg * 0.9 ? " ⬇ BELOW KS AVG" : " (near KS avg)";
-      line += ` (KS avg: ${fmt(avg, f)}${flag})`;
-    }
-    return line;
-  });
-
-  if (["ed","intervention","core"].includes(topic)) {
-    const dx6 = buildDxBlock(row, "6yr");
-    const dx24 = buildDxBlock(row, "2425");
-    if (dx6)  lines.push("\n" + dx6);
-    if (dx24) lines.push(dx24);
-  }
-  if (["drugs","network","polysubstance","intervention","core"].includes(topic)) {
-    const combo = buildComboBlock(row);
-    if (combo) lines.push("\n" + combo);
-  }
-  return lines.join("\n");
-}
-
-function buildTractSummary(countyFIPS) {
-  if (!tractData) return null;
-  const countyNum = parseInt(countyFIPS.slice(2));
-  const tracts = tractData.filter(r => r.COUNTY_FIPS !== null && parseInt(r.COUNTY_FIPS) === countyNum);
-  if (!tracts.length) return "No census tract data available for this county.";
-  const suppressed = tracts.filter(r => r.suppress_small_total === 1 || r.burden_tier === null);
-  const active = tracts.filter(r => r.suppress_small_total !== 1 && r.burden_tier !== null);
-  active.sort((a,b) => (b.eb_rate_total_per1k || 0) - (a.eb_rate_total_per1k || 0));
-  const top5 = active.slice(0,5);
-  const topNaloxone = [...active].sort((a,b) => (b.est_kits_needed_annual_median || 0) - (a.est_kits_needed_annual_median || 0)).slice(0,3);
-  let out = `CENSUS TRACT BREAKDOWN:\nTotal tracts: ${tracts.length} | Reportable: ${active.length} | Suppressed: ${suppressed.length}\n\n`;
-  out += `TOP 5 TRACTS BY OVERDOSE BURDEN (EB rate/1k):\n`;
-  top5.forEach((t,i) => {
-    out += `${i+1}. Tract ${t.TRACT_FIPS || t.FIPS}: EB Rate=${fmt(t.eb_rate_total_per1k,"per1k")}, Burden=${t.burden_tier||"—"}, Ecosystem=${t.ecosystem_type||"—"}, Incidents(2020-2025)=${fmt(t.incidents_total,"")}, Dominant Drug=${t.net_dominant_drug||"—"}\n`;
-  });
-  out += `\nTOP 3 TRACTS BY NALOXONE NEED (kits/year, median):\n`;
-  topNaloxone.forEach((t,i) => {
-    out += `${i+1}. Tract ${t.TRACT_FIPS || t.FIPS}: Kits/yr=${fmt(t.est_kits_needed_annual_median,"")}, Naloxone Gap=${fmt(t.naloxone_gap,"gap")}, Expected Opioid ODs/yr=${fmt(t.expected_opioid_ods_annual,"")}\n`;
-  });
-  if (suppressed.length) out += `\nNote: ${suppressed.length} tract(s) suppressed due to small counts.\n`;
-  return out;
-}
-
-function buildTroopSummary(troopLetter) {
-  const troop = KHP_TROOPS[troopLetter];
-  if (!troop || !countyData) return null;
-  const rows = troop.counties.map(fips => ({
-    fips, name: FIPS_COUNTY[fips] || fips,
-    row: countyData.find(r => padFIPS(r.FIPS) === fips)
-  }));
-  let out = `KHP ${troop.name} — ${troop.counties.length} counties:\n\n`;
-  rows.forEach(({ name, row }) => {
-    if (!row) { out += `${name} County: [No data]\n`; return; }
-    if (row.suppress_small_total === 1) {
-      out += `${name} County: [SUPPRESSED] Burden=${row.burden_tier||"—"}\n`;
-    } else {
-      out += `${name} County: Incidents(2020-2025)=${fmt(row.incidents_total,"")}, Rate/1k=${fmt(row.rate_total_per1k,"per1k")}, Burden=${row.burden_tier||"—"}, Trend=${row.odmap_trend_flag||"—"}, Top Drug=${row.net_dominant_drug||"—"}, CAGR=${fmt(row.odmap_cagr_2020_2025,"cagr_2020")}\n`;
-    }
-  });
-  return out;
-}
-
-// ── System prompt ──────────────────────────────────────────────────────────
-function buildSystemPrompt(row, topic, extra) {
-  const county = row.NAME;
-  const pop = (row.population_1 || row.POPULATION || 0).toLocaleString();
-  const troopLetter = FIPS_TO_TROOP[padFIPS(row.FIPS)];
-  const troopName = troopLetter ? KHP_TROOPS[troopLetter].name : "Unknown";
-
-  return `You are KODA, the Kansas Overdose Data Assistant — built by the CDC Foundation's Overdose Response Strategy (ORS) program.
-
-You are speaking with a community partner, public health professional, law enforcement officer, or prevention coalition member about ${county} County, Kansas (population: ${pop}, KHP Troop: ${troopName}).
-
-IMPORTANT DATA NOTES:
-- Incident totals (incidents_total, Opioid, Methamphetamine, etc.) cover 2020–2025 from ODMAP
-- Annual rates (rate_YYYY_per1k) are per 1,000 residents per year
-- Fatal OD data (F2018_2025_*) covers 2018–2025 from KDHE Vital Statistics
-- ED visit data (visits_6yr) covers 2020–2025 from ESSENCE
-- CAGR ≤5 in absolute value means it's stored as a decimal — multiply by 100 for percentage
-- TopCombo_1 through TopCombo_5 are the top polysubstance combinations by RAW INCIDENT COUNT — always use these when discussing "most common combinations"
-- net_strongest_pair is the strongest pair by JACCARD SIMILARITY (proportional co-occurrence), which is a network analysis metric — only reference this when specifically discussing the drug network or co-occurrence patterns, and always distinguish it from the incident-count-based combos
-- net_bridge_drug is the substance that connects the most other drugs in the network — useful for intervention targeting
-
-COUNTY DATA (${county.toUpperCase()}):
-${buildDataSummary(row, topic)}${extra ? "\n\nADDITIONAL CONTEXT:\n" + extra : ""}
-
-RESPONSE STYLE:
-- Get directly to the data — skip pleasantries like "great question" or "it's wonderful you're asking"
-- Always specify time periods when citing totals (e.g., "2,560 incidents from 2020 to 2025")
-- Use specific numbers. Never invent figures not listed above.
-- Compare to Kansas state average when relevant — flagged as ABOVE/BELOW KS AVG
-- Proactively surface 1–2 insights the user didn't ask about but should know
-- When users describe intervention ideas, engage with what the data specifically supports
-- 2–4 focused paragraphs unless detailed breakdown is needed
-- If data is suppressed or unavailable, say so clearly
-- End with a "Worth noting:" line when there's an actionable insight
-- Professional but direct — this is a working tool for practitioners`;
-}
-
-// ── Tract map ──────────────────────────────────────────────────────────────
 function getBurdenColor(tier) {
   if (!tier) return "#ecf0f1";
-  const t = tier.toLowerCase();
+  var t = tier.toLowerCase();
   if (t.includes("suppressed")) return "#bdc3c7";
   if (t.includes("high") && t.includes("opioid")) return "#7b0d0d";
   if (t.includes("high") && t.includes("stimulant")) return "#c0392b";
@@ -954,133 +526,63 @@ function getBurdenColor(tier) {
   return "#ecf0f1";
 }
 
-async function renderTractMap(countyFIPS, countyName) {
-  const countyNum = parseInt(countyFIPS.slice(2));
-  const stateNum  = countyFIPS.slice(0,2);
-  const tracts = tractData ? tractData.filter(r => r.COUNTY_FIPS !== null && parseInt(r.COUNTY_FIPS) === countyNum) : [];
-  if (!tracts.length) return null;
-
-  const tractLookup = {};
-  tracts.forEach(t => {
-    const tractId = String(parseInt(t.TRACT_FIPS || 0)).padStart(6,"0");
-    tractLookup[tractId] = t;
-  });
-
-  const mapId = `map-${++mapCounter}`;
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = `
-    <div class="map-title">Census Tract Overdose Burden — ${countyName} County</div>
-    <div id="${mapId}" class="tract-map"></div>
-    <div class="map-legend">
-      ${[
-        ["High Burden Opioid","#7b0d0d"],
-        ["High Burden Stimulant","#c0392b"],
-        ["High Burden Mixed","#e74c3c"],
-        ["Moderate Burden","#e67e22"],
-        ["Low Burden","#f1c40f"],
-        ["Minimal Burden","#2ecc71"],
-        ["Suppressed","#bdc3c7"],
-        ["No Data","#ecf0f1"]
-      ].map(([k,v])=>`<div class="map-legend-item"><div class="map-legend-swatch" style="background:${v}"></div>${k}</div>`).join("")}
-    </div>`;
-
-  // Return wrapper — map will init after DOM insert
-  wrapper._initMap = async () => {
-    try {
-      const geoUrl = `https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query?where=STATE%3D'${stateNum}'+AND+COUNTY%3D'${String(countyNum).padStart(3,"0")}'&outFields=TRACT,GEOID&f=geojson&outSR=4326`;
-      const res = await fetch(geoUrl);
-      const geo = await res.json();
-      if (!geo.features?.length) return;
-
-      const map = L.map(mapId, { zoomControl: true, attributionControl: false });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", { maxZoom: 14 }).addTo(map);
-
-      const layer = L.geoJSON(geo, {
-        style: feature => {
-          const tractId = String(feature.properties.TRACT).padStart(6,"0");
-          const t = tractLookup[tractId];
-          let color = "#ecf0f1";
-          if (t) {
-            if (t.suppress_small_total === 1) color = "#bdc3c7";
-            else color = getBurdenColor(t.burden_tier);
-          }
-          return { fillColor: color, weight: 1, color: "#fff", fillOpacity: 0.8 };
-        },
-        onEachFeature: (feature, layer) => {
-          const tractId = String(feature.properties.TRACT).padStart(6,"0");
-          const t = tractLookup[tractId];
-          if (t) {
-            const suppressed = t.suppress_small_total === 1;
-            layer.bindPopup(`<strong>Tract ${feature.properties.TRACT}</strong><br/>
-              Burden: ${t.burden_tier || "—"}<br/>
-              EB Rate/1k: ${fmt(t.eb_rate_total_per1k,"per1k")}<br/>
-              Incidents (2020–2025): ${fmt(t.incidents_total,"")}<br/>
-              Ecosystem: ${t.ecosystem_type || "—"}<br/>
-              ${suppressed ? "<em>Data suppressed</em>" : `Kits Needed/yr: ${fmt(t.est_kits_needed_annual_median,"")}`}`);
-          }
-        }
-      }).addTo(map);
-
-      map.fitBounds(layer.getBounds(), { padding: [10,10] });
-    } catch(e) {
-      document.getElementById(mapId).innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable — tract boundaries could not be loaded</div>`;
-    }
-  };
-  return wrapper;
-}
-
-// ── UI helpers ─────────────────────────────────────────────────────────────
 function renderMetrics(row, fields) {
-  const cards = fields.map(f => {
-    const val = row[f];
+  var cards = fields.map(function(f) {
+    var val = row[f];
     if (val === null || val === undefined) return "";
-    const avg = stateAvgs[f];
-    const isNum = typeof val === "number";
-    const isHigh = isNum && avg !== undefined && val > avg * 1.1;
-    const isLow  = isNum && avg !== undefined && val < avg * 0.9;
-    const compare = isNum && avg !== undefined ? `KS avg: ${fmt(avg, f)}` : "";
-    return `<div class="metric-card">
-      <div class="label">${FIELD_LABELS[f] || f}</div>
-      <div class="value ${isHigh?"high":isLow?"low":""}">${fmt(val,f)}${isHigh?" ▲":isLow?" ▼":""}</div>
-      ${compare ? `<div class="compare">${compare}</div>` : ""}
-    </div>`;
+    var avg = stateAvgs[f];
+    var isNum = typeof val === "number";
+    var isHigh = isNum && avg !== undefined && val > avg * 1.1;
+    var isLow = isNum && avg !== undefined && val < avg * 0.9;
+    var compare = isNum && avg !== undefined ? "KS avg: " + fmt(avg, f) : "";
+    return '<div class="metric-card">' +
+      '<div class="label">' + (FIELD_LABELS[f]||f) + '</div>' +
+      '<div class="value ' + (isHigh?"high":isLow?"low":"") + '">' + fmt(val,f) + (isHigh?" ▲":isLow?" ▼":"") + '</div>' +
+      (compare ? '<div class="compare">' + compare + '</div>' : '') +
+      '</div>';
   }).join("");
-  return `<div class="metric-grid">${cards}</div>`;
+  return '<div class="metric-grid">' + cards + '</div>';
 }
 
 function addMessage(role, html, tag) {
-  const chat = document.getElementById("chat");
-  const div = document.createElement("div");
-  div.className = `msg ${role}`;
-  const tagHtml = tag ? `<div class="county-tag">${tag}</div>` : "";
-  div.innerHTML = `<div class="avatar">${role==="koda"?"K":"U"}</div><div class="bubble">${tagHtml}${html}</div>`;
+  var chat = document.getElementById("chat");
+  var div = document.createElement("div");
+  div.className = "msg " + role;
+  var tagHtml = tag ? '<div class="county-tag">' + tag + '</div>' : "";
+  div.innerHTML = '<div class="avatar">' + (role==="koda"?"K":"U") + '</div><div class="bubble">' + tagHtml + html + '</div>';
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div.querySelector(".bubble");
 }
 
 function addTyping() {
-  const chat = document.getElementById("chat");
-  const div = document.createElement("div");
-  div.className = "msg koda"; div.id = "typing-indicator";
-  div.innerHTML = `<div class="avatar">K</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  var chat = document.getElementById("chat");
+  var div = document.createElement("div");
+  div.className = "msg koda";
+  div.id = "typing-indicator";
+  div.innerHTML = '<div class="avatar">K</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
-function removeTyping() { document.getElementById("typing-indicator")?.remove(); }
+
+function removeTyping() {
+  var t = document.getElementById("typing-indicator");
+  if (t) t.remove();
+}
 
 function addChips(chips) {
-  const chat = document.getElementById("chat");
-  const div = document.createElement("div");
+  var chat = document.getElementById("chat");
+  var div = document.createElement("div");
   div.className = "msg koda";
-  div.innerHTML = `<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:4px 0">
-    <div class="suggestion-chips">${chips.map(s=>`<button class="chip" onclick="sendChip('${s.replace(/'/g,"&#39;")}')">${s}</button>`).join("")}</div></div>`;
+  div.innerHTML = '<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:4px 0"><div class="suggestion-chips">' +
+    chips.map(function(s) { return '<button class="chip" onclick="sendChip(\'' + s.replace(/'/g,"&#39;") + '\')">' + s + '</button>'; }).join("") +
+    '</div></div>';
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
-window.sendChip = t => {
-  const detected = detectLocation(t);
+window.sendChip = function(t) {
+  var detected = detectLocation(t);
   if (detected) { sessionFIPS = detected.fips; sessionCountyName = detected.countyName; }
   document.getElementById("user-input").value = t;
   handleSend();
@@ -1089,138 +591,173 @@ window.sendChip = t => {
 function formatResponse(text) {
   text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   text = text.replace(/\*(.*?)\*/g, "<em>$1</em>");
-  const m = text.match(/Worth noting:([\s\S]+?)(?:\n\n|$)/);
-  let main = text, worthHtml = "";
-  if (m) { main = text.replace(m[0],"").trim(); worthHtml = `<div class="worth-noting"><strong>Worth noting:</strong>${m[1]}</div>`; }
-  const paras = main.split(/\n\n+/).filter(p=>p.trim()).map(p=>`<p>${p.trim()}</p>`).join("");
+  var m = text.match(/Worth noting:([\s\S]+?)(?:\n\n|$)/);
+  var main = text, worthHtml = "";
+  if (m) {
+    main = text.replace(m[0],"").trim();
+    worthHtml = '<div class="worth-noting"><strong>Worth noting:</strong>' + m[1] + '</div>';
+  }
+  var paras = main.split(/\n\n+/).filter(function(p) { return p.trim(); }).map(function(p) { return "<p>" + p.trim() + "</p>"; }).join("");
   return paras + worthHtml;
 }
 
-async function callGemini(prompt, retries = 2) {
-  for (let i = 0; i < retries; i++) {
-    const res = await fetch(`${WORKER_URL}/gemini`, {
+async function callGemini(prompt, retries) {
+  retries = retries || 2;
+  for (var i = 0; i < retries; i++) {
+    var res = await fetch(WORKER_URL + "/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
-    const d = await res.json();
+    var d = await res.json();
     if (d.error) {
-      const msg = d.error.message || "";
-      const isOverload = msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503") || msg.includes("429");
+      var msg = d.error.message || "";
+      var isOverload = msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503") || msg.includes("429");
       if (isOverload && i < retries - 1) {
-        await new Promise(r => setTimeout(r, 6000));
+        await new Promise(function(r) { setTimeout(r, 6000); });
         continue;
       }
       throw new Error(msg);
     }
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || "I wasn't able to generate a response.";
+    return d.candidates[0].content.parts[0].text || "I was not able to generate a response.";
   }
 }
 
-// ── Main handler ───────────────────────────────────────────────────────────
+async function renderTractMap(countyFIPS, countyName) {
+  var countyNum = parseInt(countyFIPS.slice(2));
+  var stateNum = countyFIPS.slice(0,2);
+  var tracts = tractData ? tractData.filter(function(r) { return r.COUNTY_FIPS !== null && parseInt(r.COUNTY_FIPS) === countyNum; }) : [];
+  if (!tracts.length) return null;
+
+  var tractLookup = {};
+  tracts.forEach(function(t) {
+    var tractId = String(parseInt(t.TRACT_FIPS || 0)).padStart(6,"0");
+    tractLookup[tractId] = t;
+  });
+
+  var mapId = "map-" + (++mapCounter);
+  var wrapper = document.createElement("div");
+  var legendItems = [
+    ["High Burden Opioid","#7b0d0d"],["High Burden Stimulant","#c0392b"],["High Burden Mixed","#e74c3c"],
+    ["Moderate Burden","#e67e22"],["Low Burden","#f1c40f"],["Minimal Burden","#2ecc71"],
+    ["Suppressed","#bdc3c7"],["No Data","#ecf0f1"]
+  ];
+  wrapper.innerHTML = '<div class="map-title">Census Tract Overdose Burden -- ' + countyName + ' County</div>' +
+    '<div id="' + mapId + '" class="tract-map"></div>' +
+    '<div class="map-legend">' +
+    legendItems.map(function(item) {
+      return '<div class="map-legend-item"><div class="map-legend-swatch" style="background:' + item[1] + '"></div>' + item[0] + '</div>';
+    }).join("") + '</div>';
+
+  wrapper._initMap = async function() {
+    try {
+      var geoUrl = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query?where=STATE%3D'" + stateNum + "'+AND+COUNTY%3D'" + String(countyNum).padStart(3,"0") + "'&outFields=TRACT,GEOID&f=geojson&outSR=4326";
+      var geoRes = await fetch(geoUrl);
+      var geo = await geoRes.json();
+      if (!geo.features || !geo.features.length) return;
+
+      var map = L.map(mapId, { zoomControl: true, attributionControl: false });
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", { maxZoom: 14 }).addTo(map);
+
+      var layer = L.geoJSON(geo, {
+        style: function(feature) {
+          var tractId = String(feature.properties.TRACT).padStart(6,"0");
+          var t = tractLookup[tractId];
+          var color = "#ecf0f1";
+          if (t) color = t.suppress_small_total === 1 ? "#bdc3c7" : getBurdenColor(t.burden_tier);
+          return { fillColor: color, weight: 1, color: "#fff", fillOpacity: 0.8 };
+        },
+        onEachFeature: function(feature, lyr) {
+          var tractId = String(feature.properties.TRACT).padStart(6,"0");
+          var t = tractLookup[tractId];
+          if (t) {
+            var suppressed = t.suppress_small_total === 1;
+            lyr.bindPopup("<strong>Tract " + feature.properties.TRACT + "</strong><br/>" +
+              "Burden: " + (t.burden_tier||"--") + "<br/>" +
+              "EB Rate/1k: " + fmt(t.eb_rate_total_per1k,"per1k") + "<br/>" +
+              "Incidents (2020-2025): " + fmt(t.incidents_total,"") + "<br/>" +
+              "Ecosystem: " + (t.ecosystem_type||"--") + "<br/>" +
+              (suppressed ? "<em>Data suppressed</em>" : "Kits Needed/yr: " + fmt(t.est_kits_needed_annual_median,"")));
+          }
+        }
+      }).addTo(map);
+
+      map.fitBounds(layer.getBounds(), { padding: [10,10] });
+    } catch(e) {
+      var el = document.getElementById(mapId);
+      if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable -- tract boundaries could not be loaded</div>';
+    }
+  };
+  return wrapper;
+}
+
 async function handleSend() {
   if (isLoading || !countyData) return;
-  const input = document.getElementById("user-input");
-  const text = input.value.trim();
+  var input = document.getElementById("user-input");
+  var text = input.value.trim();
   if (!text) return;
   input.value = "";
   isLoading = true;
   document.getElementById("send-btn").disabled = true;
 
-  addMessage("user", `<p>${text}</p>`);
+  addMessage("user", "<p>" + text + "</p>");
 
-  const detected = detectLocation(text);
+  var detected = detectLocation(text);
   if (detected) { sessionFIPS = detected.fips; sessionCountyName = detected.countyName; }
 
-  const topic = detectTopic(text);
-  const troopLetter = detectTroop(text);
+  var topic = detectTopic(text);
+  var troopLetter = detectTroop(text);
 
   addTyping();
 
   try {
-    // No county and not a troop question
     if (!sessionFIPS && topic !== "troop") {
-      const resp = await callGemini(`The user said: "${text}". They haven't mentioned a Kansas county or city. Ask which county or city they're working in. You are KODA, the Kansas Overdose Data Assistant. Be direct — 1–2 sentences only.`);
+      var resp = await callGemini("The user said: \"" + text + "\". They have not mentioned a Kansas county or city. Ask which county or city they are working in. You are KODA, the Kansas Overdose Data Assistant. Be direct -- 1-2 sentences only.");
       removeTyping();
       addMessage("koda", formatResponse(resp));
       addChips(["I'm from Reno County","I'm from Hutchinson","I'm from Sedgwick County","I'm from Wichita","I'm from Wyandotte County","I'm from Johnson County","I'm from Shawnee County"]);
-    }
-    // Troop question
-    else if (topic === "troop") {
-      // If no specific troop letter detected, ask which one
+    } else if (topic === "troop") {
       if (!troopLetter && !sessionFIPS) {
         removeTyping();
-        addMessage("koda", `<p>I can break down overdose data by KHP Troop area. Which troop are you interested in?</p>`);
-        addChips([
-          "Troop A — Olathe (KC Metro)","Troop B — Topeka (NE Kansas)",
-          "Troop C — Salina (N Central)","Troop D — Hays (NW Kansas)",
-          "Troop E — Garden City (SW Kansas)","Troop F — Wichita (S Central)",
-          "Troop H — Chanute (SE Kansas)"
-        ]);
+        addMessage("koda", "<p>I can break down overdose data by KHP Troop area. Which troop are you interested in?</p>");
+        addChips(["Troop A - Olathe (KC Metro)","Troop B - Topeka (NE Kansas)","Troop C - Salina (N Central)","Troop D - Hays (NW Kansas)","Troop E - Garden City (SW Kansas)","Troop F - Wichita (S Central)","Troop H - Chanute (SE Kansas)"]);
       } else {
-        // Use detected troop letter, or find from county
-        const tLetter = troopLetter || (sessionFIPS ? FIPS_TO_TROOP[sessionFIPS] : null);
+        var tLetter = troopLetter || (sessionFIPS ? FIPS_TO_TROOP[sessionFIPS] : null);
         if (!tLetter) {
           removeTyping();
-          addMessage("koda", `<p>I wasn't able to identify a specific troop. Which KHP Troop area are you interested in?</p>`);
-          addChips(["Troop A — Olathe","Troop B — Topeka","Troop C — Salina","Troop D — Hays","Troop E — Garden City","Troop F — Wichita","Troop H — Chanute"]);
+          addMessage("koda", "<p>Which KHP Troop area are you interested in?</p>");
+          addChips(["Troop A - Olathe","Troop B - Topeka","Troop C - Salina","Troop D - Hays","Troop E - Garden City","Troop F - Wichita","Troop H - Chanute"]);
         } else {
-          const troopSummary = buildTroopSummary(tLetter);
-          const prompt = `You are KODA, the Kansas Overdose Data Assistant.
-
-The user asked about KHP ${KHP_TROOPS[tLetter].name} overdose data.
-
-${troopSummary}
-
-Summarize the overdose landscape across these counties in 3–4 focused paragraphs. Be specific with numbers. Cover:
-1. Which counties have the highest burden and rates (with actual figures)
-2. Dominant drug trends across the troop area and any county-level variation
-3. Trend directions — which counties are increasing, stable, or decreasing
-4. Any suppressed counties and what that means
-
-End with a "Worth noting:" insight about the troop area's overall pattern and what it means for response strategy. Skip pleasantries — get straight to the data.`;
-          const aiText = await callGemini(prompt);
+          var troopSummary = buildTroopSummary(tLetter);
+          var troopPrompt = "You are KODA, the Kansas Overdose Data Assistant.\n\nThe user asked about KHP " + KHP_TROOPS[tLetter].name + " overdose data.\n\n" + troopSummary + "\n\nSummarize the overdose landscape across these counties in 3-4 focused paragraphs. Be specific with numbers. Cover:\n1. Which counties have the highest burden and rates (with actual figures)\n2. Dominant drug trends across the troop area and county-level variation\n3. Trend directions -- which counties are increasing, stable, or decreasing\n4. Any suppressed counties and what that means\n\nEnd with a 'Worth noting:' insight about the troop area's overall pattern. Skip pleasantries -- get straight to the data.";
+          var aiText = await callGemini(troopPrompt);
           removeTyping();
-          addMessage("koda", formatResponse(aiText), `KHP ${KHP_TROOPS[tLetter].name}`);
-          addChips([
-            "Which county in this troop has the highest burden?",
-            "Tell me about naloxone needs across this troop",
-            "What are the dominant drugs in this troop area?",
-            "Which counties are trending up?"
-          ]);
+          addMessage("koda", formatResponse(aiText), "KHP " + KHP_TROOPS[tLetter].name);
+          addChips(["Which county in this troop has the highest burden?","Tell me about naloxone needs across this troop","What are the dominant drugs in this troop area?","Which counties are trending up?"]);
         }
       }
-    }
-    // County question
-    else {
-      const row = countyData.find(r => padFIPS(r.FIPS) === sessionFIPS);
+    } else {
+      var row = countyData.find(function(r) { return padFIPS(r.FIPS) === sessionFIPS; });
       if (!row) {
         removeTyping();
-        addMessage("koda", `<p>No data found for ${sessionCountyName} County. Please try again.</p>`);
+        addMessage("koda", "<p>No data found for " + sessionCountyName + " County. Please try again.</p>");
       } else {
-        let extra = null;
-        let mapWrapper = null;
-
+        var extra = null;
+        var mapWrapper = null;
         if (topic === "tract") {
           extra = buildTractSummary(sessionFIPS);
           mapWrapper = await renderTractMap(sessionFIPS, sessionCountyName);
         }
-
-        const sysPrompt = buildSystemPrompt(row, topic, extra);
-        const aiText = await callGemini(sysPrompt + "\n\nUser message: " + text);
+        var sysPrompt = buildSystemPrompt(row, topic, extra);
+        var aiResponse = await callGemini(sysPrompt + "\n\nUser message: " + text);
         removeTyping();
-
-        let html = formatResponse(aiText);
+        var html = formatResponse(aiResponse);
         if (detected) html += renderMetrics(row, KEY_DISPLAY_FIELDS);
-
-        const bubble = addMessage("koda", html, sessionCountyName);
-
-        // Append map after message if tract question
+        var bubble = addMessage("koda", html, sessionCountyName);
         if (mapWrapper && bubble) {
           bubble.appendChild(mapWrapper);
-          setTimeout(() => mapWrapper._initMap(), 100);
+          setTimeout(function() { mapWrapper._initMap(); }, 100);
         }
-
         addChips([
           "Where is overdose burden highest within this county?",
           "What drugs are driving overdoses here?",
@@ -1233,7 +770,7 @@ End with a "Worth noting:" insight about the troop area's overall pattern and wh
     }
   } catch(e) {
     removeTyping();
-    addMessage("koda", `<p>Error: ${e.message}. Please try again.</p>`);
+    addMessage("koda", "<p>Error: " + e.message + ". Please try again.</p>");
   }
 
   isLoading = false;
@@ -1242,27 +779,30 @@ End with a "Worth noting:" insight about the troop area's overall pattern and wh
 }
 
 document.getElementById("send-btn").addEventListener("click", handleSend);
-document.getElementById("user-input").addEventListener("keydown", e => { if(e.key==="Enter") handleSend(); });
+document.getElementById("user-input").addEventListener("keydown", function(e) { if (e.key === "Enter") handleSend(); });
 
-// ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
   try {
-    const setMsg = m => document.querySelector("#loading-screen .load-msg").textContent = m;
-    setMsg("Loading county data…");
-    const [cRes, tRes] = await Promise.all([fetch(COUNTY_CSV_URL), fetch(TRACT_CSV_URL)]);
-    if (!cRes.ok) throw new Error(`County CSV error (${cRes.status})`);
-    if (!tRes.ok) throw new Error(`Tract CSV error (${tRes.status})`);
-    setMsg("Parsing data…");
-    countyData = parseCSV(await cRes.text()).filter(r => r.STATE_ABBR === "KS");
+    var setMsg = function(m) { document.querySelector("#loading-screen .load-msg").textContent = m; };
+    setMsg("Loading county data...");
+    var results = await Promise.all([fetch(COUNTY_CSV_URL), fetch(TRACT_CSV_URL)]);
+    var cRes = results[0], tRes = results[1];
+    if (!cRes.ok) throw new Error("County CSV error (" + cRes.status + ")");
+    if (!tRes.ok) throw new Error("Tract CSV error (" + tRes.status + ")");
+    setMsg("Parsing data...");
+    var cText = await cRes.text();
+    var tText = await tRes.text();
+    var allCounties = parseCSV(cText);
+    countyData = allCounties.filter(function(r) { return r.STATE_ABBR === "KS"; });
     if (!countyData.length) throw new Error("No Kansas county records found");
     stateAvgs = calcStateAvgs(countyData);
-    tractData = parseCSV(await tRes.text());
+    tractData = parseCSV(tText);
     document.getElementById("loading-screen").style.display = "none";
-
-    addMessage("koda",`<p>Hi, I'm <strong>KODA</strong> — the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p>
-<p>I have county-level and census tract-level overdose surveillance data for all of Kansas — EMS incidents (2020–2025), emergency department visits with diagnosis codes, fatal overdoses (2018–2025), naloxone distribution, drug trends, spike events, and more. I can compare any county to the Kansas state average, break down data by KHP Troop area, and map overdose burden at the census tract level.</p>
-<p>Tell me which county or city you're working in and what you'd like to know.</p>`);
-
+    addMessage("koda",
+      "<p>Hi, I'm <strong>KODA</strong> -- the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p>" +
+      "<p>I have county-level and census tract-level overdose surveillance data for all of Kansas -- EMS incidents (2020-2025), emergency department visits with diagnosis codes, fatal overdoses (2018-2025), naloxone distribution, drug trends, spike events, and more. I can compare any county to the Kansas state average, break down data by KHP Troop area, and map overdose burden at the census tract level.</p>" +
+      "<p>Tell me which county or city you're working in and what you'd like to know.</p>"
+    );
     addChips([
       "Give me an overview of Reno County",
       "Tell me about stimulant trends in Sedgwick County",
@@ -1271,11 +811,12 @@ async function init() {
       "Where is burden highest within Sedgwick County?"
     ]);
   } catch(e) {
-    document.getElementById("loading-screen").innerHTML = `
-      <div class="logo">KODA</div>
-      <div class="load-msg" style="color:#f87171;text-align:center;padding:0 24px">Error: ${e.message}<br><br>Please refresh to try again.</div>`;
+    document.getElementById("loading-screen").innerHTML =
+      '<div class="logo">KODA</div>' +
+      '<div class="load-msg" style="color:#f87171;text-align:center;padding:0 24px">Error: ' + e.message + '<br><br>Please refresh to try again.</div>';
   }
 }
+
 init();
 </script>
 </body>
