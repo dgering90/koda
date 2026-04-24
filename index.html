@@ -62,7 +62,7 @@
 
 <div id="input-area">
   <div id="input-row">
-    <input id="user-input" type="text" placeholder="Tell me your county and what you'd like to know…" autocomplete="off" />
+    <input id="user-input" type="text" placeholder="Tell me your county or city and what you'd like to know…" autocomplete="off" />
     <button id="send-btn">Send</button>
   </div>
   <div class="disclaimer">KODA uses live overdose surveillance data. For emergencies call 911. Data reflects ODMAP, ESSENCE, and KDHE Vital Statistics.</div>
@@ -71,29 +71,104 @@
 <script>
 const PROXY = "https://koda-proxy.dgering.workers.dev";
 const AGOL = "https://services8.arcgis.com/3imH29cidUY8teIo/arcgis/rest/services/KS_County_Overdose_Master/FeatureServer/0/query";
-const GEMINI_KEY = "AIzaSyByLKn9oc6zlH35HqAZXvVG_P0Z4hvS2Vk";
+const GEMINI_KEY = "YOUR_GEMINI_KEY_HERE";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
 
-const KS_COUNTIES = ["Allen","Anderson","Atchison","Barber","Barton","Bourbon","Brown","Butler","Chase","Chautauqua","Cherokee","Cheyenne","Clark","Clay","Cloud","Coffey","Comanche","Cowley","Crawford","Decatur","Dickinson","Doniphan","Douglas","Edwards","Elk","Ellis","Ellsworth","Finney","Ford","Franklin","Geary","Gove","Graham","Grant","Gray","Greeley","Greenwood","Hamilton","Harper","Harvey","Haskell","Hodgeman","Jackson","Jefferson","Jewell","Johnson","Kearny","Kingman","Kiowa","Labette","Lane","Leavenworth","Lincoln","Linn","Logan","Lyon","Marion","Marshall","McPherson","Meade","Miami","Mitchell","Montgomery","Morris","Morton","Nemaha","Neosho","Ness","Norton","Osage","Osborne","Ottawa","Pawnee","Phillips","Pottawatomie","Pratt","Rawlins","Reno","Republic","Rice","Riley","Rooks","Rush","Russell","Saline","Scott","Sedgwick","Seward","Shawnee","Sheridan","Sherman","Smith","Stafford","Stanton","Stevens","Sumner","Thomas","Trego","Wabaunsee","Wallace","Washington","Wichita","Wilson","Woodson","Wyandotte"];
+// Kansas county FIPS lookup: county name → 5-digit FIPS
+const COUNTY_FIPS = {
+  "Allen":"20001","Anderson":"20003","Atchison":"20005","Barber":"20007","Barton":"20009",
+  "Bourbon":"20011","Brown":"20013","Butler":"20015","Chase":"20017","Chautauqua":"20019",
+  "Cherokee":"20021","Cheyenne":"20023","Clark":"20025","Clay":"20027","Cloud":"20029",
+  "Coffey":"20031","Comanche":"20033","Cowley":"20035","Crawford":"20037","Decatur":"20039",
+  "Dickinson":"20041","Doniphan":"20043","Douglas":"20045","Edwards":"20047","Elk":"20049",
+  "Ellis":"20051","Ellsworth":"20053","Finney":"20055","Ford":"20057","Franklin":"20059",
+  "Geary":"20061","Gove":"20063","Graham":"20065","Grant":"20067","Gray":"20069",
+  "Greeley":"20071","Greenwood":"20073","Hamilton":"20075","Harper":"20077","Harvey":"20079",
+  "Haskell":"20081","Hodgeman":"20083","Jackson":"20085","Jefferson":"20087","Jewell":"20089",
+  "Johnson":"20091","Kearny":"20093","Kingman":"20095","Kiowa":"20097","Labette":"20099",
+  "Lane":"20101","Leavenworth":"20103","Lincoln":"20105","Linn":"20107","Logan":"20109",
+  "Lyon":"20111","Marion":"20115","Marshall":"20117","McPherson":"20113","Meade":"20119",
+  "Miami":"20121","Mitchell":"20123","Montgomery":"20125","Morris":"20127","Morton":"20129",
+  "Nemaha":"20131","Neosho":"20133","Ness":"20135","Norton":"20137","Osage":"20139",
+  "Osborne":"20141","Ottawa":"20143","Pawnee":"20145","Phillips":"20147","Pottawatomie":"20149",
+  "Pratt":"20151","Rawlins":"20153","Reno":"20155","Republic":"20157","Rice":"20159",
+  "Riley":"20161","Rooks":"20163","Rush":"20165","Russell":"20167","Saline":"20169",
+  "Scott":"20171","Sedgwick":"20173","Seward":"20175","Shawnee":"20177","Sheridan":"20179",
+  "Sherman":"20181","Smith":"20183","Stafford":"20185","Stanton":"20187","Stevens":"20189",
+  "Sumner":"20191","Thomas":"20193","Trego":"20195","Wabaunsee":"20197","Wallace":"20199",
+  "Washington":"20201","Wichita":"20203","Wilson":"20205","Woodson":"20207","Wyandotte":"20209"
+};
 
-const CORE_FIELDS = ["NAME","population_1","incidents_total","opioid_incidents","polysub_incidents","rate_total_per1k","eb_rate_total_per100k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2024_per1k","rate_2025_per1k","odmap_yoy_pct_change_2025","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","TopCombo_1","TopCombo_2","mean_substances","naloxone_gap","est_kits_needed_annual_median","F2018_2025_all_fatal","crude_rate_all_fatal_per100k","visits_6yr","visits_2425","ess_trend_flag","SpikeEvents_2024","SpikeEvents_2025","net_dominant_drug","net_bridge_drug","past_mean","recent_mean"];
+// Reverse lookup: FIPS → county name
+const FIPS_COUNTY = Object.fromEntries(Object.entries(COUNTY_FIPS).map(([k,v]) => [v,k]));
+
+// Kansas city → county FIPS mapping
+const CITY_TO_FIPS = {
+  "wichita":"20173","derby":"20173","andover":"20173","haysville":"20173","valley center":"20173","maize":"20173","goddard":"20173","cheney":"20173",
+  "overland park":"20091","olathe":"20091","shawnee":"20091","lenexa":"20091","leawood":"20091","merriam":"20091","prairie village":"20091","gardner":"20091","spring hill":"20091","de soto":"20091",
+  "kansas city":"20209","wyandotte":"20209","bonner springs":"20209","edwardsville":"20209",
+  "topeka":"20177","auburn":"20177","silver lake":"20177","rossville":"20177",
+  "lawrence":"20045","eudora":"20045","baldwin city":"20045","lecompton":"20045",
+  "manhattan":"20161","riley":"20161","ogden":"20161",
+  "salina":"20169","assaria":"20169","brookville":"20169",
+  "hutchinson":"20155","nickerson":"20155","haven":"20155","buhler":"20155","south hutchinson":"20155",
+  "leavenworth":"20103","lansing":"20103","basehor":"20103","tonganoxie":"20087",
+  "junction city":"20061","milford":"20061",
+  "emporia":"20111","council grove":"20127",
+  "pittsburg":"20037","columbus":"20021","parsons":"20099","independence":"20125","coffeyville":"20125",
+  "liberal":"20175","ulysses":"20067","garden city":"20055","dodge city":"20057","hays":"20051",
+  "great bend":"20009","larned":"20145","pratt":"20151","kingman":"20095",
+  "el dorado":"20015","augusta":"20015","winfield":"20035","arkansas city":"20035","wellington":"20191",
+  "newton":"20079","halstead":"20079",
+  "fort scott":"20011","chanute":"20133","iola":"20001","ottawa":"20059","paola":"20121","garnett":"20003",
+  "atchison":"20005","hiawatha":"20013","horton":"20013","holton":"20085","oskaloosa":"20087",
+  "abilene":"20041","chapman":"20041","mcpherson":"20113","lyons":"20159","ellsworth":"20053",
+  "colby":"20193","goodland":"20065","oakley":"20101","scott city":"20171","liberal":"20175",
+  "oberlin":"20039","norton":"20137","phillipsburg":"20147","beloit":"20123","concordia":"20029",
+  "clay center":"20027","marysville":"20117","seneca":"20131","sabetha":"20131",
+  "osage city":"20139","burlington":"20031","yates center":"20207","fredonia":"20205",
+  "cherryvale":"20099","erie":"20049","sedan":"20019","caney":"20125",
+  "minneapolis":"20143","lincoln":"20105","russell":"20167","ellis":"20051",
+  "wakeeney":"20195","stockton":"20163","hill city":"20065","quinter":"20063",
+  "lakin":"20093","syracuse":"20187","sublette":"20081","ashland":"20025","coldwater":"20033",
+  "minneola":"20057","kinsley":"20047","stafford":"20185","st john":"20185",
+  "medicine lodge":"20007","anthony":"20077","harper":"20077","attica":"20077",
+  "cimarron":"20057","copeland":"20069","meade":"20119","kismet":"20175",
+  "leoti":"20203","tribune":"20071","sharon springs":"20199","weskan":"20199",
+  "formoso":"20157","belleville":"20157","mankato":"20089","esbon":"20089",
+  "osborne":"20141","smith center":"20183","phillipsburg":"20147"
+};
+
+const CORE_FIELDS = ["NAME","FIPS","population_1","incidents_total","opioid_incidents","polysub_incidents","rate_total_per1k","eb_rate_total_per100k","burden_tier","ecosystem_type","dominance_direction","odmap_trend_flag","odmap_cagr_2020_2025","rate_2023_per1k","rate_2024_per1k","rate_2025_per1k","odmap_yoy_pct_change_2024","odmap_yoy_pct_change_2025","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","Synthetic_Marijuana","TopCombo_1","TopCombo_2","TopCombo_3","mean_substances","naloxone_gap","naloxone_opioid_total","est_kits_needed_annual_median","expected_opioid_ods_annual","F2018_2025_all_fatal","crude_rate_all_fatal_per100k","F2018_2025_opioid","F2018_2025_psychostimulant","visits_6yr","visits_2425","ess_trend_flag","ess_cagr_2020_2025","pct_opioid_6yr","pct_stimulant_6yr","pct_mental_health_6yr","pct_polysubstance_6yr","SpikeEvents_2023","SpikeEvents_2024","SpikeEvents_2025","net_dominant_drug","net_bridge_drug","net_shape","past_mean","recent_mean","signal_total_2425","unique_substances_present"];
 
 const FIELD_LABELS = {
-  incidents_total:"Total OD Incidents",rate_total_per1k:"Rate per 1,000",eb_rate_total_per100k:"EB Rate per 100k",
-  burden_tier:"Burden Tier",ecosystem_type:"Drug Ecosystem",dominance_direction:"Dominant Drug Class",
+  incidents_total:"Total OD Incidents",rate_total_per1k:"Rate per 1,000",
+  eb_rate_total_per100k:"EB Rate per 100k",burden_tier:"Burden Tier",
+  ecosystem_type:"Drug Ecosystem",dominance_direction:"Dominant Drug Class",
   odmap_trend_flag:"Trend Direction",odmap_cagr_2020_2025:"CAGR 2020–2025",
   rate_2024_per1k:"Rate/1k 2024",rate_2025_per1k:"Rate/1k 2025",
   odmap_yoy_pct_change_2025:"YoY Change 2025",naloxone_gap:"Naloxone Gap",
+  naloxone_opioid_total:"Total Naloxone Admins",
   est_kits_needed_annual_median:"Naloxone Kits Needed (annual)",
+  expected_opioid_ods_annual:"Expected Annual Opioid ODs",
   F2018_2025_all_fatal:"Fatal ODs 2018–2025",crude_rate_all_fatal_per100k:"Fatal Rate per 100k",
-  visits_6yr:"ED Visits (6yr)",visits_2425:"ED Visits 2024–25",ess_trend_flag:"ED Trend",
+  F2018_2025_opioid:"Opioid Fatal ODs 2018–2025",F2018_2025_psychostimulant:"Stimulant Fatal ODs 2018–2025",
+  visits_6yr:"ED Visits (6yr)",visits_2425:"ED Visits 2024–25",
+  ess_trend_flag:"ED Trend",ess_cagr_2020_2025:"ED CAGR 2020–2025",
+  pct_opioid_6yr:"% ED – Opioid",pct_stimulant_6yr:"% ED – Stimulant",
+  pct_mental_health_6yr:"% ED – Mental Health",pct_polysubstance_6yr:"% ED – Polysubstance",
   SpikeEvents_2024:"Spike Events 2024",SpikeEvents_2025:"Spike Events 2025",
-  TopCombo_1:"Top Drug Combo",mean_substances:"Mean Substances/Incident",
-  net_dominant_drug:"Dominant Drug",net_bridge_drug:"Bridge Drug",
+  TopCombo_1:"Top Drug Combo #1",TopCombo_2:"Top Drug Combo #2",TopCombo_3:"Top Drug Combo #3",
+  mean_substances:"Mean Substances/Incident",unique_substances_present:"Unique Substances Present",
+  net_dominant_drug:"Dominant Drug",net_bridge_drug:"Bridge Drug",net_shape:"Network Shape",
+  past_mean:"Past Period Mean",recent_mean:"Recent Period Mean",signal_total_2425:"Signal Score 2024–25",
+  Opioid:"Opioid Incidents",Methamphetamine:"Meth Incidents",Benzodiazepine:"Benzo Incidents",
+  Cocaine:"Cocaine Incidents",Alcohol:"Alcohol Incidents",Synthetic_Marijuana:"Synthetic MJ Incidents",
 };
 
 let allData = null;
-let sessionCounty = null;
+let sessionFIPS = null;
+let sessionCountyName = null;
 let conversationHistory = [];
 let isLoading = false;
 
@@ -104,7 +179,7 @@ function fmt(val, field) {
     const v = Math.abs(val) <= 5 ? val * 100 : val;
     return v.toFixed(1) + "%";
   }
-  if (field && (field.includes("per1k") || field.includes("_rate") || field.includes("ratio") || field.includes("p_opioid") || field.includes("p_stimulant") || field.includes("gap"))) {
+  if (field && (field.includes("per1k") || field.includes("_rate") || field.includes("ratio") || field.includes("gap"))) {
     return val.toFixed(2);
   }
   return typeof val === "number" ? (Number.isInteger(val) ? val.toLocaleString() : val.toFixed(1)) : val;
@@ -116,9 +191,25 @@ function stateAvg(field) {
   return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
 }
 
-function detectCounty(text) {
+// Detect county from text via county name or city name
+function detectFIPS(text) {
   const lower = text.toLowerCase();
-  return KS_COUNTIES.find(c => lower.includes(c.toLowerCase())) || null;
+
+  // Check direct county name mention
+  for (const [county, fips] of Object.entries(COUNTY_FIPS)) {
+    if (lower.includes(county.toLowerCase() + " county") || lower.includes(county.toLowerCase())) {
+      return { fips, countyName: county };
+    }
+  }
+
+  // Check city name mention
+  for (const [city, fips] of Object.entries(CITY_TO_FIPS)) {
+    if (lower.includes(city)) {
+      return { fips, countyName: FIPS_COUNTY[fips] };
+    }
+  }
+
+  return null;
 }
 
 async function fetchAGOL() {
@@ -126,7 +217,9 @@ async function fetchAGOL() {
   const url = `${AGOL}?where=1%3D1&outFields=${encodeURIComponent(fields)}&resultRecordCount=2000&f=json`;
   const proxyUrl = `${PROXY}?url=${encodeURIComponent(url)}`;
   const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error(`Proxy returned ${res.status}`);
   const json = await res.json();
+  if (json.error) throw new Error(json.error.message || "AGOL error");
   return json.features?.map(f => f.attributes) || [];
 }
 
@@ -137,13 +230,14 @@ async function callGemini(prompt) {
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
   });
   const d = await res.json();
+  if (d.error) throw new Error(d.error.message);
   return d.candidates?.[0]?.content?.parts?.[0]?.text || "I wasn't able to generate a response.";
 }
 
-function buildSystemPrompt(countyData, allRows) {
+function buildSystemPrompt(countyData) {
   const county = countyData.NAME;
   const pop = (countyData.population_1 || 0).toLocaleString();
-  const dataLines = CORE_FIELDS.filter(f => f !== "NAME").map(f => {
+  const dataLines = CORE_FIELDS.filter(f => !["NAME","FIPS"].includes(f)).map(f => {
     const val = countyData[f];
     const avg = stateAvg(f);
     const label = FIELD_LABELS[f] || f;
@@ -157,7 +251,7 @@ function buildSystemPrompt(countyData, allRows) {
 
   return `You are KODA, the Kansas Overdose Data Assistant, an AI analyst built by the CDC Foundation's Overdose Response Strategy (ORS) program for Kansas.
 
-You are speaking with a community partner, public health professional, law enforcement officer, or coalition member about overdose and substance use data for ${county} County, Kansas (population: ${pop}).
+You are speaking with a community partner, public health professional, law enforcement officer, or coalition member about overdose and substance use data for ${county} County, Kansas (population: ${pop}, FIPS: ${countyData.FIPS}).
 
 LIVE DATA FOR ${county.toUpperCase()} COUNTY:
 ${dataLines}
@@ -173,7 +267,7 @@ YOUR ROLE:
 - End responses with a short "Worth noting:" line when there's an important actionable insight
 - You represent ORS and CDC Foundation — be professional but human
 
-Do not make up data. Only use the figures provided above. If asked about something not in the data, say so clearly and suggest where they might find it.`;
+Do not make up data. Only use the figures provided above.`;
 }
 
 function renderMetrics(countyData, fields) {
@@ -198,13 +292,9 @@ function addMessage(role, html, countyName) {
   div.className = `msg ${role}`;
   const avatar = role === "koda" ? "K" : "U";
   const tag = countyName ? `<div class="county-tag">${countyName} County</div>` : "";
-  div.innerHTML = `
-    <div class="avatar">${avatar}</div>
-    <div class="bubble">${tag}${html}</div>
-  `;
+  div.innerHTML = `<div class="avatar">${avatar}</div><div class="bubble">${tag}${html}</div>`;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-  return div;
 }
 
 function addTyping() {
@@ -262,63 +352,58 @@ async function handleSend() {
   addMessage("user", `<p>${text}</p>`);
   conversationHistory.push({ role: "user", content: text });
 
-  const detectedCounty = detectCounty(text);
-  if (detectedCounty) sessionCounty = detectedCounty;
+  const detected = detectFIPS(text);
+  if (detected) {
+    sessionFIPS = detected.fips;
+    sessionCountyName = detected.countyName;
+  }
 
   addTyping();
 
   try {
-    // Load all data if not yet loaded
     if (!allData) {
       allData = await fetchAGOL();
     }
 
-    let responseHtml = "";
-    let chips = [];
-
-    if (!sessionCounty) {
+    if (!sessionFIPS) {
       removeTyping();
-      const resp = await callGemini(`The user said: "${text}". They haven't mentioned a Kansas county yet. Ask them which county they're interested in, in a warm and brief way. You are KODA, the Kansas Overdose Data Assistant.`);
-      responseHtml = formatResponse(resp);
-      chips = ["I'm from Reno County", "I'm from Sedgwick County", "I'm from Wyandotte County", "I'm from Johnson County"];
+      const resp = await callGemini(`The user said: "${text}". They haven't mentioned a Kansas county or city yet. Ask them warmly which county or city they're working in. You are KODA, the Kansas Overdose Data Assistant. Keep it brief — 2 sentences max.`);
+      addMessage("koda", formatResponse(resp));
+      addChips(["I'm from Reno County","I'm from Hutchinson","I'm from Sedgwick County","I'm from Wichita","I'm from Wyandotte County","I'm from Johnson County"]);
     } else {
-      const countyData = allData.find(r => r.NAME?.toLowerCase().trim() === sessionCounty.toLowerCase().trim());
+      const countyData = allData.find(r => r.FIPS === sessionFIPS);
       if (!countyData) {
         removeTyping();
-        responseHtml = `<p>I wasn't able to find data for ${sessionCounty} County. Please check the county name and try again.</p>`;
+        addMessage("koda", `<p>I wasn't able to find data for ${sessionCountyName} County (FIPS: ${sessionFIPS}). Please try again or contact ORS for support.</p>`);
       } else {
-        const systemPrompt = buildSystemPrompt(countyData, allData);
-        const messages = conversationHistory.map(m => ({ role: m.role, content: m.content }));
+        const systemPrompt = buildSystemPrompt(countyData);
         removeTyping();
         addTyping();
         const aiText = await callGemini(systemPrompt + "\n\nNow respond to this message from the user: " + text);
         removeTyping();
-        responseHtml = formatResponse(aiText);
+
+        let html = formatResponse(aiText);
         conversationHistory.push({ role: "assistant", content: aiText });
 
-        // Show key metrics for first county mention
-        if (detectedCounty) {
-          const keyFields = ["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","SpikeEvents_2025","est_kits_needed_annual_median"];
-          responseHtml += renderMetrics(countyData, keyFields);
+        if (detected) {
+          const keyFields = ["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","SpikeEvents_2025","est_kits_needed_annual_median","F2018_2025_all_fatal"];
+          html += renderMetrics(countyData, keyFields);
         }
 
-        chips = [
+        addMessage("koda", html, sessionCountyName);
+        addChips([
           "What drugs are driving overdoses here?",
           "How does our trend compare to the state?",
           "What does our naloxone gap look like?",
           "Tell me about fatal overdoses in our county",
           "What intervention strategies fit our data profile?"
-        ];
+        ]);
       }
     }
 
-    removeTyping();
-    addMessage("koda", responseHtml, sessionCounty);
-    if (chips.length) addChips(chips);
-
   } catch(e) {
     removeTyping();
-    addMessage("koda", `<p>I ran into an error: ${e.message}. Please try again.</p>`);
+    addMessage("koda", `<p>I ran into an error: ${e.message}. Please try again in a moment.</p>`);
   }
 
   isLoading = false;
@@ -332,9 +417,9 @@ document.getElementById("user-input").addEventListener("keydown", e => { if (e.k
 // Welcome message
 addMessage("koda", `<p>Hi, I'm <strong>KODA</strong> — the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p>
 <p>I have live access to county-level overdose surveillance data across Kansas — including EMS incidents, emergency department visits, fatal overdoses, naloxone distribution, drug trends, and more.</p>
-<p>Tell me which county you're working in and what you'd like to understand about the overdose landscape there. You can ask me anything — from "what does our meth trend look like?" to "what does the data say about how we should target naloxone distribution?"</p>`);
+<p>Tell me which county or city you're working in and what you'd like to understand. You can ask me anything from "what does our meth trend look like?" to "what does the data say about how we should target naloxone distribution?"</p>`);
 
-addChips(["I'm from Reno County and want an overview", "Tell me about opioid trends in Sedgwick County", "What counties have the highest burden in Kansas?", "I'm from Wyandotte County — what's our drug ecosystem look like?"]);
+addChips(["I'm from Reno County and want an overview","I'm from Wichita — tell me about opioid trends","I'm from Wyandotte County — what's our drug ecosystem?","I'm from Hutchinson and want to know about meth"]);
 </script>
 </body>
 </html>
