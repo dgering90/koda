@@ -689,8 +689,71 @@ function buildComboDonut(row) {
   return w.div;
 }
 
-// Generate charts based on topic
-function generateCharts(row, topic, peers) {
+// Naloxone tract map — colored by kit need
+async function renderNaloxoneMap(countyFIPS, countyName) {
+  var countyNum=parseInt(countyFIPS.slice(2)), stateNum=countyFIPS.slice(0,2);
+  var tracts=tractData?tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===countyNum&&r.suppress_small_total!==1;}):[];
+  if(!tracts.length) return null;
+
+  // Build lookup
+  var tractLookup={};
+  tracts.forEach(function(t){
+    var id=String(parseInt(t.TRACT_FIPS||0)).padStart(6,"0");
+    tractLookup[id]=t; tractLookup[String(parseInt(t.TRACT_FIPS||0))]=t;
+  });
+
+  // Determine color scale based on kit need
+  var kits=tracts.map(function(t){return t.est_kits_needed_annual_median||0;}).filter(function(v){return v>0;});
+  var maxKits=kits.length?Math.max.apply(null,kits):1;
+
+  function getNaloxoneColor(val) {
+    if(!val||val===0) return "#E5EEF1";
+    var ratio=val/maxKits;
+    if(ratio>0.75) return "#7b0d0d";
+    if(ratio>0.5)  return "#c0392b";
+    if(ratio>0.25) return "#e67e22";
+    return "#f1c40f";
+  }
+
+  var mapId="map-"+(++mapCounter), wrapperId="mw-"+mapId;
+  var wrapper=document.createElement("div"); wrapper.id=wrapperId;
+  var legendItems=[["Highest Need","#7b0d0d"],["High Need","#c0392b"],["Moderate Need","#e67e22"],["Lower Need","#f1c40f"],["Minimal/No Data","#E5EEF1"]];
+  wrapper.innerHTML='<div class="map-title">Naloxone Kit Need by Census Tract -- '+countyName+' County (estimated kits/year)</div>'+
+    '<div id="'+mapId+'" class="tract-map"></div>'+
+    '<div class="map-legend">'+legendItems.map(function(i){return'<div class="map-legend-item"><div class="map-legend-swatch" style="background:'+i[1]+'"></div>'+i[0]+'</div>';}).join("")+'</div>'+
+    '<div class="chart-source">Source: ODMAP 2020-2025 | Kansas ORS -- Kit estimates based on opioid incident burden and naloxone gap methodology</div>'+
+    '<button class="map-export-btn" onclick="exportChart(\''+wrapperId+'\',\''+countyName+'_Naloxone_Need_Map\')">&#8681; Download Map</button>';
+
+  wrapper._initMap=async function(){
+    try{
+      var geoRes=await fetch("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query?where=STATE%3D'"+stateNum+"'+AND+COUNTY%3D'"+String(countyNum).padStart(3,"0")+"'&outFields=TRACT,GEOID&f=geojson&outSR=4326");
+      var geo=await geoRes.json();
+      if(!geo.features||!geo.features.length) return;
+      var map=L.map(mapId,{zoomControl:true,attributionControl:false});
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:14}).addTo(map);
+      var layer=L.geoJSON(geo,{
+        style:function(f){
+          var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0");
+          var t=tractLookup[pad]||tractLookup[raw];
+          var color=t?getNaloxoneColor(t.est_kits_needed_annual_median):"#E5EEF1";
+          return{fillColor:color,weight:1,color:"#fff",fillOpacity:0.85};
+        },
+        onEachFeature:function(f,lyr){
+          var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0");
+          var t=tractLookup[pad]||tractLookup[raw];
+          if(t) lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>"+
+            "Kits Needed/yr (median): "+fmt(t.est_kits_needed_annual_median,"")+"<br/>"+
+            "Kits Needed/yr (high): "+fmt(t.est_kits_needed_annual_high,"")+"<br/>"+
+            "Naloxone Gap: "+fmt(t.naloxone_gap,"gap")+"<br/>"+
+            "Expected Opioid ODs/yr: "+fmt(t.expected_opioid_ods_annual,"")+"<br/>"+
+            "Burden: "+(t.burden_tier||"--"));
+        }
+      }).addTo(map);
+      map.fitBounds(layer.getBounds(),{padding:[10,10]});
+    }catch(e){var el=document.getElementById(mapId);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };
+  return wrapper;
+}
   var charts = [];
   if (topic === "trends") {
     charts.push(buildTrendChart(row, peers));
@@ -868,8 +931,9 @@ async function handleSend() {
       var row=countyData.find(function(r){return padFIPS(r.FIPS)===sessionFIPS;});
       if(!row){removeTyping();addMessage("koda","<p>No data found for "+sessionCountyName+" County.</p>");}
       else{
-        var extra=null, mapWrapper=null;
+        var extra=null, mapWrapper=null, naloxoneMapWrapper=null;
         if(topic==="tract"){extra=buildTractSummary(sessionFIPS);mapWrapper=await renderTractMap(sessionFIPS,sessionCountyName);}
+        if(topic==="naloxone"){naloxoneMapWrapper=await renderNaloxoneMap(sessionFIPS,sessionCountyName);}
         var peers=getPeerCounties(sessionFIPS,3);
         var sysPrompt=buildSystemPrompt(row,topic,extra,peers);
         var aiResp=await callGemini(sysPrompt+"\n\nUser message: "+text);
@@ -879,11 +943,17 @@ async function handleSend() {
         var bubble=addMessage("koda",html,sessionCountyName);
         // Append map if tract
         if(mapWrapper&&bubble){bubble.appendChild(mapWrapper);setTimeout(function(){mapWrapper._initMap();},100);}
-        // Append charts if applicable
+        if(naloxoneMapWrapper&&bubble){bubble.appendChild(naloxoneMapWrapper);setTimeout(function(){naloxoneMapWrapper._initMap();},150);}
+        // Charts
         var noChartTopics=["tract","troop","intervention","network"];
         if(noChartTopics.indexOf(topic)<0){
           var charts=generateCharts(row,topic,peers);
           charts.forEach(function(c){if(c&&bubble)bubble.appendChild(c);});
+          // Naloxone always gets opioid rate comparison chart too
+          if(topic==="naloxone"){
+            var oc=buildOpioidCompareChart(row,peers);
+            if(oc&&bubble)bubble.appendChild(oc);
+          }
         }
         addChips(["Where is overdose burden highest within this county?","What drugs are driving overdoses here?","What does our naloxone gap look like?","Tell me about fatal overdoses in our county","What intervention strategies fit our data profile?","Break down overdoses by KHP Troop area"]);
       }
