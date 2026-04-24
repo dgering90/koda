@@ -618,15 +618,25 @@ function formatResponse(text) {
   return paras + worthHtml;
 }
 
-async function callGemini(prompt) {
-  const res = await fetch(`${WORKER_URL}/gemini`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-  });
-  const d = await res.json();
-  if (d.error) throw new Error(d.error.message);
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || "I wasn't able to generate a response.";
+async function callGemini(prompt, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(`${WORKER_URL}/gemini`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const d = await res.json();
+    if (d.error) {
+      const msg = d.error.message || "";
+      const isOverload = msg.includes("high demand") || msg.includes("overloaded") || msg.includes("503") || msg.includes("429");
+      if (isOverload && i < retries - 1) {
+        await new Promise(r => setTimeout(r, 6000));
+        continue;
+      }
+      throw new Error(msg);
+    }
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || "I wasn't able to generate a response.";
+  }
 }
 
 // ── Main handler ───────────────────────────────────────────────────────────
