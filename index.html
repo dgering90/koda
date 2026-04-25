@@ -126,7 +126,7 @@ var KHP={
   D:{name:"Troop D - Hays (NW Kansas)",c:["20023","20039","20051","20063","20065","20109","20137","20141","20147","20153","20163","20167","20179","20181","20183","20193","20195","20199"]},
   E:{name:"Troop E - Garden City (SW Kansas)",c:["20025","20033","20047","20055","20057","20067","20069","20071","20075","20081","20083","20093","20097","20101","20119","20129","20135","20145","20165","20171","20175","20187","20189"]},
   F:{name:"Troop F - Wichita (S Central)",c:["20007","20009","20015","20035","20077","20079","20095","20151","20155","20159","20173","20185","20191"]},
-  H:{name:"Troop H - Chanute (SE Kansas)",c:["20001","20003","20011","20019","20021","20031","20049","20073","20099","20107","20111","20125","20133","20205","20207"]}
+  H:{name:"Troop H - Chanute (SE Kansas)",c:["20001","20003","20011","20019","20021","20031","20037","20049","20073","20099","20107","20111","20125","20133","20205","20207"]}
 };
 var F2T={};Object.keys(KHP).forEach(function(l){KHP[l].c.forEach(function(f){F2T[f]=l;});});
 
@@ -163,7 +163,6 @@ var DS={core:"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",drug
 var countyData=null,tractData=null,stateAvgs={},countyGeo=null;
 var sessionFIPS=null,sessionCountyName=null,sessionTroop=null;
 var isLoading=false,mapCnt=0,chartCnt=0,chipGrp=0,chatStarted=false;
-// Precomputed tract hospital_rate stats for z-score map
 var tractHospMean=null,tractHospSD=null;
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -187,29 +186,15 @@ function calcAvgs(rows){
   Object.keys(rows[0]).forEach(function(k){var vals=rows.map(function(r){return r[k];}).filter(function(v){return v!==null&&typeof v==="number"&&!isNaN(v);});if(vals.length)a[k]=vals.reduce(function(x,y){return x+y;},0)/vals.length;});
   return a;
 }
-function calcSD(rows,key,mean){
-  var vals=rows.map(function(r){return r[key];}).filter(function(v){return v!==null&&typeof v==="number"&&!isNaN(v);});
-  if(!vals.length) return 1;
-  var variance=vals.reduce(function(acc,v){return acc+Math.pow(v-mean,2);},0)/vals.length;
-  return Math.sqrt(variance)||1;
-}
 function padFIPS(v){return v===null||v===undefined?null:String(parseInt(v)).padStart(5,"0");}
 function sv(v){return(v===null||v===undefined||isNaN(v))?0:parseFloat(v);}
 function cleanName(n){if(!n) return n;return n.replace(/\s+County\s*$/i,"");}
 
-// FIX: fmt — yoy_pct fields are already percentages, never multiply
 function fmt(v,f){
   if(v===null||v===undefined) return "--";
   if(typeof v==="string") return v;
-  // Fields already stored as percentages — display as-is with % sign
-  if(f&&(f.includes("pct_")||f.includes("hospital_rate"))){
-    return parseFloat(v).toFixed(1)+"%";
-  }
-  // yoy_pct fields: already in percent form (e.g. 12.4 = 12.4%), never multiply
-  if(f&&f.includes("yoy_pct")){
-    return parseFloat(v).toFixed(1)+"%";
-  }
-  // Other rate/density fields
+  if(f&&(f.includes("pct_")||f.includes("hospital_rate"))) return parseFloat(v).toFixed(1)+"%";
+  if(f&&f.includes("yoy_pct")) return parseFloat(v).toFixed(1)+"%";
   if(f&&(f.includes("per1k")||(f.includes("_rate")&&!f.includes("visits")&&!f.includes("hospital"))||f.includes("gap")||f.includes("density")||f.includes("p_opioid")||f.includes("p_stimulant")||f.includes("confidence")))
     return parseFloat(v).toFixed(2);
   return typeof v==="number"?(v%1===0?v.toLocaleString():v.toFixed(1)):v;
@@ -219,12 +204,9 @@ function ecoColor(eco){
   if(!eco) return "#E5EEF1";
   var k=eco.toLowerCase().trim();
   for(var key in ECO_COLORS){if(k===key||k.indexOf(key)===0) return ECO_COLORS[key];}
-  // Fallback partial match
   for(var key2 in ECO_COLORS){if(k.indexOf(key2.split(" ")[0])>=0) return ECO_COLORS[key2];}
   return "#E5EEF1";
 }
-
-// FIX: burden tier color — check "very high" before "high"
 function burdenColor(tier){
   if(!tier) return "#E5EEF1";
   var b=tier.toLowerCase();
@@ -235,7 +217,6 @@ function burdenColor(tier){
   if(b.includes("minimal"))   return ORS.green;
   return "#E5EEF1";
 }
-
 function addHatch(map){
   var svgEl=document.createElementNS("http://www.w3.org/2000/svg","svg");svgEl.setAttribute("style","position:absolute;width:0;height:0");
   var defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
@@ -246,40 +227,48 @@ function addHatch(map){
   pat.appendChild(rect);pat.appendChild(line);defs.appendChild(pat);svgEl.appendChild(defs);map.getContainer().appendChild(svgEl);
   return "url(#hatch-"+mapCnt+")";
 }
-
-// ── z-score color for hospital transport map ───────────────────────────────
-// Blue = above mean (higher transport), Red = below mean (lower transport)
 function zscoreColor(val,mean,sd){
   var z=(val-mean)/sd;
-  if(z>=2)  return "#08519c"; // deep blue
+  if(z>=2)  return "#08519c";
   if(z>=1)  return "#3182bd";
-  if(z>=0)  return "#9ecae1"; // light blue
-  if(z>=-1) return "#fc8d59"; // light red
+  if(z>=0)  return "#9ecae1";
+  if(z>=-1) return "#fc8d59";
   if(z>=-2) return "#d7301f";
-  return "#7f0000";           // deep red
+  return "#7f0000";
 }
 
-// ── Location detection (FIX: word-boundary matching) ──────────────────────
+// ── FIX 1: Grant county detection — simple phrase exclusion ───────────────
 function detectLocs(text){
-  // Strip generic filler phrases that confuse multi-county detection
-  var cleaned=text.toLowerCase()
-    .replace(/\ball\s+\d+\s+counties?\b/gi,"")
-    .replace(/\bthese\s+counties?\b/gi,"")
-    .replace(/\bthose\s+counties?\b/gi,"")
-    .replace(/\bthe\s+counties?\b/gi,"")
-    .replace(/\beach\s+county\b/gi,"")
-    .replace(/\bboth\s+counties?\b/gi,"");
+  var tl=text.toLowerCase();
+  var cleaned=tl
+    .replace(/\ball\s+\d+\s+counties?\b/g,"")
+    .replace(/\bthese\s+counties?\b/g,"")
+    .replace(/\bthose\s+counties?\b/g,"")
+    .replace(/\bthe\s+counties?\b/g,"")
+    .replace(/\beach\s+county\b/g,"")
+    .replace(/\bboth\s+counties?\b/g,"");
+
+  // Phrases that mean "grant" is not a county name
+  var grantPhrases=["grant application","grant proposal","grant funding","grant award","grant program","grant request","grant report","grant writer","grant writing","writing a grant","applying for a grant","applying for grant","submitted a grant","a grant for","the grant","this grant","our grant","my grant","grant-funded","grant funded","grant money","grant dollars","grant dollars","rfp","request for proposal","request for proposals","funding opportunity","funding application"];
+  var grantIsNonGeo=false;
+  for(var gi=0;gi<grantPhrases.length;gi++){
+    if(tl.indexOf(grantPhrases[gi])>=0){grantIsNonGeo=true;break;}
+  }
 
   var found=[];
-  // Match county names with word boundaries — require county name to be a whole word
   Object.keys(CF).forEach(function(county){
-    var re=new RegExp("\\b"+county.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
-    if(re.test(cleaned+" county")||re.test(cleaned))
-      found.push({fips:CF[county],countyName:county});
+    var lc=county.toLowerCase();
+    var escaped=lc.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    var re=new RegExp("\\b"+escaped+"\\b");
+    if(!re.test(cleaned)) return;
+    if(lc==="grant"&&grantIsNonGeo) return;
+    found.push({fips:CF[county],countyName:county});
   });
+
   if(!found.length){
     Object.keys(CityF).forEach(function(city){
-      var re=new RegExp("\\b"+city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
+      var escaped=city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      var re=new RegExp("\\b"+escaped+"\\b");
       if(re.test(cleaned)) found.push({fips:CityF[city],countyName:FC[CityF[city]]});
     });
   }
@@ -318,7 +307,6 @@ function getChoroMetric(topic){
   return {field:"odmap_eb_rate_total_per1k",label:"EB Rate per 1,000"};
 }
 
-// ── Suggestions ────────────────────────────────────────────────────────────
 function buildSuggestions(rows,topic,isMulti,shownTract,shownEco){
   var r=rows[0],sugs=[];
   if(topic!=="tract"&&!isMulti) sugs.push("Where is overdose burden highest within "+cleanName(r.NAME)+" County?");
@@ -359,17 +347,10 @@ function getPeers(fips,n){
 }
 
 function shouldShowSuicide(row,text){var t=text.toLowerCase();if(/suicide|mental health|behavioral|depression|anxiety|crisis|ideation/.test(t))return true;if(row.pct_suicide_att_6yr&&stateAvgs.pct_suicide_att_6yr&&row.pct_suicide_att_6yr>stateAvgs.pct_suicide_att_6yr*1.2)return true;return false;}
-function shouldShowEDAge(row,text){var t=text.toLowerCase();if(/age|youth|teen|young|older|elder|senior|pediatric/.test(t))return true;if(/\bed\b|emergency|hospital|essence|visit|treatment|access/.test(t))return true;return false;}
 function shouldShowRepeatVisit(row,text){var t=text.toLowerCase();if(/repeat|frequent|revolving|treatment gap|access|capacity/.test(t))return true;if(row.rapid30_6yr&&stateAvgs.rapid30_6yr&&row.rapid30_6yr>stateAvgs.rapid30_6yr*1.3)return true;return false;}
+function parseAITags(text){var tags=[],matches=text.match(/\[SHOW:([a-z_]+)\]/g)||[];matches.forEach(function(m){tags.push(m.replace("[SHOW:","").replace("]",""));});return{text:text.replace(/\[SHOW:[a-z_]+\]/g,"").trim(),tags:tags};}
 
-function parseAITags(text){
-  var tags=[],matches=text.match(/\[SHOW:([a-z_]+)\]/g)||[];
-  matches.forEach(function(m){tags.push(m.replace("[SHOW:","").replace("]",""));});
-  return{text:text.replace(/\[SHOW:[a-z_]+\]/g,"").trim(),tags:tags};
-}
-
-// ── Data summary ───────────────────────────────────────────────────────────
-function buildDxBlock(row,sfx){var lbl=sfx==="6yr"?"2020-2025":"2024-25",e=[];for(var i=1;i<=5;i++){var c=row["dx"+sfx+"_rank"+i],n=row["dx"+sfx+"_rank"+i+"_n"];if(c&&n!==null)e.push("  "+i+". "+c+" -- "+Math.round(n).toLocaleString()+" visits");}return e.length?"Top ED Diagnosis Codes ("+lbl+"):\n"+e.join("\n"):null;}
+function buildDxBlock(row,sfx){var lbl=sfx==="6yr"?"2020–2025":"2024–25",e=[];for(var i=1;i<=5;i++){var c=row["dx"+sfx+"_rank"+i],n=row["dx"+sfx+"_rank"+i+"_n"];if(c&&n!==null)e.push("  "+i+". "+c+" -- "+Math.round(n).toLocaleString()+" visits");}return e.length?"Top ED Diagnosis Codes ("+lbl+"):\n"+e.join("\n"):null;}
 function buildComboBlock(row){var e=[];for(var i=1;i<=5;i++){var c=row["TopCombo_"+i],n=row["TopCombo_"+i+"_Incidents"];if(c&&n!==null)e.push("  "+i+". "+c+" -- "+Math.round(n).toLocaleString()+" incidents");}return e.length?"Top Polysubstance Combinations:\n"+e.join("\n"):null;}
 
 function buildDataSummary(rows,topic){
@@ -415,12 +396,12 @@ function buildTractSummary(fips){
   var sup=tracts.filter(function(r){return r.suppress_small_total===1||r.burden_tier===null;});
   var act=tracts.filter(function(r){return r.suppress_small_total!==1&&r.burden_tier!==null;});
   act.sort(function(a,b){return(b.eb_rate_total_per1k||0)-(a.eb_rate_total_per1k||0);});
-  var out="CENSUS TRACT BREAKDOWN:\nTotal: "+tracts.length+" | Reportable: "+act.length+" | Suppressed: "+sup.length+"\n\nTOP 5 BY BURDEN:\n";
-  act.slice(0,5).forEach(function(t,i){out+=(i+1)+". Tract "+(t.TRACT_FIPS||t.FIPS)+": EB Rate="+fmt(t.eb_rate_total_per1k,"per1k")+", Burden="+(t.burden_tier||"--")+", Ecosystem="+(t.ecosystem_type||"--")+", Hospital Transport="+fmt(t.hospital_rate,"hospital_rate")+"\n";});
-  out+="\nTOP 3 BY NALOXONE NEED:\n";
+  var out="CENSUS TRACT BREAKDOWN (EMS suspected overdose calls, ODMAP 2020–2025):\nTotal: "+tracts.length+" | Reportable: "+act.length+" | Suppressed: "+sup.length+"\n\nTOP 5 TRACTS BY BURDEN:\n";
+  act.slice(0,5).forEach(function(t,i){out+=(i+1)+". Tract "+(t.TRACT_FIPS||t.FIPS)+": EB Rate="+fmt(t.eb_rate_total_per1k,"per1k")+"/1k (2020–2025), Burden="+(t.burden_tier||"--")+", Ecosystem="+(t.ecosystem_type||"--")+", Hospital Transport="+fmt(t.hospital_rate,"hospital_rate")+"\n";});
+  out+="\nTOP 3 TRACTS BY NALOXONE NEED:\n";
   act.slice().sort(function(a,b){return(b.est_kits_needed_annual_median||0)-(a.est_kits_needed_annual_median||0);}).slice(0,3).forEach(function(t,i){out+=(i+1)+". Tract "+(t.TRACT_FIPS||t.FIPS)+": Kits/yr="+fmt(t.est_kits_needed_annual_median,"")+", Gap="+fmt(t.naloxone_gap,"gap")+"\n";});
   if(sup.length) out+="\n"+sup.length+" tract(s) suppressed.\n";
-  out+="\nNOTE: A z-score map of hospital transport rate by census tract is available if requested.";
+  out+="\nNOTE: Census tract data is EMS suspected overdose calls only — not ED visits. A z-score map of hospital transport rate by tract is available on request.";
   return out;
 }
 
@@ -434,7 +415,7 @@ function buildTroopSummary(l){
     out+=n+" County: EMS="+fmt(r.incidents_total,"")+", Rate/1k="+fmt(r.rate_total_per1k,"per1k")+", ED="+fmt(r.visits_6yr,"")+", Burden="+(r.burden_tier||"--")+", Ecosystem="+(r.ecosystem_type||"--")+", Trend="+(r.odmap_trend_flag||"--")+", Naloxone(high)="+fmt(r.est_kits_needed_annual_high,"")+", YoY2025="+fmt(r.odmap_yoy_pct_change_2025,"yoy_pct")+"\n";
   });
   var tr=t.c.map(function(f){return countyData.find(function(r){return padFIPS(r.FIPS)===f&&r.suppress_small_total!==1;});}).filter(Boolean);
-  out+="\nTROOP TOTALS:\nEMS: "+tr.reduce(function(a,r){return a+sv(r.incidents_total);},0).toLocaleString()+"\nED: "+tr.reduce(function(a,r){return a+sv(r.visits_6yr);},0).toLocaleString()+"\nNaloxone kits (high): "+tr.reduce(function(a,r){return a+sv(r.est_kits_needed_annual_high);},0).toLocaleString()+"\n";
+  out+="\nTROOP TOTALS (2020–2025):\nEMS incidents: "+tr.reduce(function(a,r){return a+sv(r.incidents_total);},0).toLocaleString()+"\nED visits: "+tr.reduce(function(a,r){return a+sv(r.visits_6yr);},0).toLocaleString()+"\nNaloxone kits needed (high est., annual): "+tr.reduce(function(a,r){return a+sv(r.est_kits_needed_annual_high);},0).toLocaleString()+"\n";
   if(suppressed.length) out+="Suppressed: "+suppressed.join(", ")+"\n";
   return out;
 }
@@ -447,26 +428,34 @@ function buildSysPrompt(rows,topic,extra,peers){
   var troopLetters=[...new Set(rows.map(function(r){return F2T[padFIPS(r.FIPS)]||"Unknown";}))];
   var troopNames=troopLetters.map(function(l){return KHP[l]?KHP[l].name:l;}).join(", ");
   var peerNote=peers&&peers.length?"\nPEER COUNTIES: "+peers.map(function(p){return cleanName(p.NAME);}).join(", "):"";
-  var edRepeatNote=topic==="ed"?"\n- rapid30/90/180_6yr = VISIT-BASED return counts. repeat_within_yr_6yr and frequent_3plus_6yr = PATIENT-BASED. Charts show visit-based only. Mention patient-based in narrative when notable.\n":"";
-  var hospNote="\n- hospital_rate = % of EMS incidents resulting in hospital transport. Already a percentage, do not multiply. If notably above or below KS average, mention it and note a z-score tract map is available on request.\n";
+  var edRepeatNote=topic==="ed"?"\n- rapid30/90/180_6yr = VISIT-BASED ED return counts (2020–2025). repeat_within_yr_6yr and frequent_3plus_6yr = PATIENT-BASED counts. Charts show visit-based only. Mention patient-based in narrative when notable.\n":"";
+  var hospNote="\n- hospital_rate = % of EMS incidents resulting in hospital transport (ODMAP 2020–2025). Already a percentage. If notably above or below KS average, mention it and note a z-score tract map is available on request.\n";
 
   return "You are KODA, the Kansas Overdose Data Assistant -- CDC Foundation ORS.\n\n"+
     (isMulti?"MULTI-COUNTY: "+names+"\nPops: "+pops+"\nKHP: "+troopNames+"\n":"County: "+names+", KS (pop: "+pops+", KHP: "+troopNames+").\n")+
     peerNote+"\n\n"+
     "DATA NOTES:\n"+
-    "- EMS/ODMAP 2020–2025 (Kansas Board of EMS). ED visits 2020–2025 (ESSENCE). Fatal OD 2018–2025 (CDC WONDER).\n"+
-    "- Rates per 1,000/year. pct_ and hospital_rate fields already in percent form.\n"+
-    "- odmap_yoy_pct_change_YYYY fields already in percent form (e.g. 12.4 = 12.4%). Do NOT multiply.\n"+
-    "- For naloxone: use HIGH estimate.\n"+
+    "- ODMAP/EMS data covers 2020–2025 (Kansas Board of EMS). Always state '2020–2025' when citing EMS or ODMAP totals.\n"+
+    "- ED visit data covers 2020–2025 (ESSENCE). Always state '2020–2025' when citing ED visit totals.\n"+
+    "- Fatal OD data covers 2018–2025 (CDC WONDER). Always state '2018–2025' when citing fatal OD counts.\n"+
+    "- CENSUS TRACT DATA IS EMS CALLS ONLY — not ED visits. Never say 'ED visits' when describing tract-level data. Say 'EMS suspected overdose calls' or 'EMS incidents'.\n"+
+    "- Recent period data (Sum2425_, visits_2425, etc.) covers 2024–2025. State '2024–2025' when citing these.\n"+
+    "- Rates per 1,000 residents/year. pct_ and hospital_rate fields already in percent form.\n"+
+    "- odmap_yoy_pct_change_YYYY already in percent form. Do NOT multiply.\n"+
+    "- For naloxone: use HIGH estimate as primary planning figure.\n"+
     "- TopCombo table will render; mention top 1-2 in narrative only.\n"+
     "- Dx codes will render in table; mention top finding in narrative only.\n"+
-    "- net_bridge_drug = drug connecting most in network.\n"+
+    "- net_bridge_drug = drug connecting most nodes in network.\n"+
     "- Suppressed = small counts, not reportable.\n"+
+    "- NEVER use raw field names. Always translate to plain English.\n"+
     edRepeatNote+hospNote+
     "CHART TAGS (include when relevant):\n"+
     "[SHOW:suicide_counts] [SHOW:suicide_pct] [SHOW:ed_age] [SHOW:ed_race] [SHOW:repeat_visit] [SHOW:ed_disposition]\n\n"+
+    "AVAILABLE VISUALIZATIONS (use when asked what maps or charts are available — list only these, as complete sentences, no commas-only lists):\n"+
+    "Charts: OD rate trend over time, year-over-year % change, drug type breakdown, drug mix donut, fatal overdose trend, EARS spike events, ED age group breakdown, ED race/ethnicity breakdown, suicide-related ED visits, repeat ED visit patterns, naloxone rate comparison, fatal OD demographics, multi-county comparison bars.\n"+
+    "Maps: Census tract burden map, EB-adjusted rate map (statewide quantile), drug ecosystem map by tract, naloxone kit need map (5-shade statewide quantile), hospital transport rate z-score map, multi-county choropleth, KHP troop ecosystem map.\n\n"+
     "COUNTY DATA:\n"+buildDataSummary(rows,topic)+(extra?"\n\nADDITIONAL:\n"+extra:"")+"\n\n"+
-    "STYLE: Direct. Exact numbers. Plain English only — NEVER use raw field names like rate_total_per1k, burden_tier, odmap_trend_flag, incidents_total, etc. Always translate to plain English (e.g. 'overdose rate per 1,000 residents', 'burden tier', 'trend status', 'total EMS incidents'). Compare to KS avg. 2-4 paragraphs. Worth noting: at end when actionable. No pleasantries."+(isMulti?" Lead with combined totals, then county differences.":"");
+    "STYLE: Direct. Exact numbers with time periods stated. Plain English only — NEVER use raw field names. Compare to KS avg. 2-4 paragraphs. Worth noting: at end when actionable. No pleasantries."+(isMulti?" Lead with combined totals, then county differences.":"");
 }
 
 // ── Chart builders ─────────────────────────────────────────────────────────
@@ -487,87 +476,82 @@ function trendChart(rows,peers){
   if(isMulti){rows.forEach(function(r,i){datasets.push({label:cleanName(r.NAME),data:yrs.map(function(y){return sv(r["rate_"+y+"_per1k"]);}),borderColor:CC[i],fill:false,tension:.3,borderWidth:2,pointRadius:3});});}
   else{var r=rows[0];datasets.push({label:cleanName(r.NAME)+" County",data:yrs.map(function(y){return sv(r["rate_"+y+"_per1k"]);}),borderColor:ORS.blue,fill:false,tension:.3,borderWidth:2.5,pointRadius:4});if(peers)peers.slice(0,2).forEach(function(p,i){datasets.push({label:cleanName(p.NAME),data:yrs.map(function(y){return sv(p["rate_"+y+"_per1k"]);}),borderColor:[ORS.teal,ORS.purple][i],fill:false,tension:.3,borderDash:[3,3],borderWidth:1.5,pointRadius:2});});}
   datasets.push({label:"KS Average",data:yrs.map(function(y){return sv(stateAvgs["rate_"+y+"_per1k"]);}),borderColor:ORS.gray,fill:false,tension:.3,borderDash:[6,3],borderWidth:1.5,pointRadius:3});
-  return lineChart("OD Rate Trend (per 1,000) — "+(isMulti?"Selected Counties":cleanName(rows[0].NAME)+" County")+" vs KS Average",DS.trends,yrs,datasets);
+  return lineChart("EMS OD Rate (per 1,000/yr, 2020–2025) — "+(isMulti?"Selected Counties":cleanName(rows[0].NAME)+" County")+" vs KS Average",DS.trends,yrs,datasets);
 }
 function yoyChart(row){
   var yrs=["2021","2022","2023","2024","2025"];
-  // FIX: yoy_pct already in percent form — no multiplication
   var vals=yrs.map(function(y){var v=row["odmap_yoy_pct_change_"+y];return(v===null||v===undefined)?0:parseFloat(v);});
-  return barChart("Year-over-Year % Change — "+cleanName(row.NAME)+" County",DS.trends,yrs,[{label:"YoY %",data:vals,backgroundColor:vals.map(function(v){return v>=0?ORS.red:ORS.teal2;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"% Change",font:{family:"Arial",size:11}}}}});
+  return barChart("Year-over-Year % Change in EMS OD Rate — "+cleanName(row.NAME)+" County",DS.trends,yrs,[{label:"YoY %",data:vals,backgroundColor:vals.map(function(v){return v>=0?ORS.red:ORS.teal2;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"% Change",font:{family:"Arial",size:11}}}}});
 }
 function drugBarChart(rows){
-  var isMulti=rows.length>1,lbls=["Opioid","Meth","Benzo","Alcohol","Cocaine","Synth MJ"],period="2024-25";
-  function getVals(r){var use=r.suppress_small_total!==1&&(r.Sum2425_Opioid||r.Sum2425_Meth);if(!use){period="2020-2025";return[sv(r.Opioid),sv(r.Methamphetamine),sv(r.Benzodiazepine),sv(r.Alcohol),sv(r.Cocaine),sv(r.Synthetic_Marijuana)];}return[sv(r.Sum2425_Opioid),sv(r.Sum2425_Meth),sv(r.Sum2425_Benzo),sv(r.Sum2425_Alcohol),sv(r.Sum2425_Cocaine),sv(r.Sum2425_SynthCan)];}
-  if(isMulti)return barChart("Drug Type Incidents ("+period+") — Selected Counties",DS.drugs,lbls,rows.map(function(r,i){return{label:cleanName(r.NAME),data:getVals(r),backgroundColor:CC[i],borderRadius:4};}));
-  return barChart("Drug Type Incidents ("+period+") — "+cleanName(rows[0].NAME)+" County",DS.drugs,lbls,[{label:"Incidents",data:getVals(rows[0]),backgroundColor:CC,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+  var isMulti=rows.length>1,lbls=["Opioid","Meth","Benzo","Alcohol","Cocaine","Synth MJ"],period="2024–25";
+  function getVals(r){var use=r.suppress_small_total!==1&&(r.Sum2425_Opioid||r.Sum2425_Meth);if(!use){period="2020–2025";return[sv(r.Opioid),sv(r.Methamphetamine),sv(r.Benzodiazepine),sv(r.Alcohol),sv(r.Cocaine),sv(r.Synthetic_Marijuana)];}return[sv(r.Sum2425_Opioid),sv(r.Sum2425_Meth),sv(r.Sum2425_Benzo),sv(r.Sum2425_Alcohol),sv(r.Sum2425_Cocaine),sv(r.Sum2425_SynthCan)];}
+  if(isMulti)return barChart("EMS Drug Type Incidents ("+period+") — Selected Counties",DS.drugs,lbls,rows.map(function(r,i){return{label:cleanName(r.NAME),data:getVals(r),backgroundColor:CC[i],borderRadius:4};}));
+  return barChart("EMS Drug Type Incidents ("+period+") — "+cleanName(rows[0].NAME)+" County",DS.drugs,lbls,[{label:"Incidents",data:getVals(rows[0]),backgroundColor:CC,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
 }
 function drugDonut(row){
   var use=row.suppress_small_total!==1&&(row.Sum2425_Opioid||row.Sum2425_Meth);
   var lbls=["Opioid","Meth","Benzo","Alcohol","Cocaine","Synth MJ"];
   var vals=use?[sv(row.Sum2425_Opioid),sv(row.Sum2425_Meth),sv(row.Sum2425_Benzo),sv(row.Sum2425_Alcohol),sv(row.Sum2425_Cocaine),sv(row.Sum2425_SynthCan)]:[sv(row.Opioid),sv(row.Methamphetamine),sv(row.Benzodiazepine),sv(row.Alcohol),sv(row.Cocaine),sv(row.Synthetic_Marijuana)];
-  return donutChart("Drug Mix — "+cleanName(row.NAME)+" County ("+(use?"2024-25":"2020-2025")+")",DS.drugs,lbls,vals);
+  return donutChart("EMS Drug Mix — "+cleanName(row.NAME)+" County ("+(use?"2024–25":"2020–2025")+")",DS.drugs,lbls,vals);
 }
 function fatalChart(row){
   var yrs=["2018","2019","2020","2021","2022","2023","2024","2025"];
-  return lineChart("Fatal Overdose Trend — "+cleanName(row.NAME)+" County",DS.fatal,yrs,[{label:"All Fatal",data:yrs.map(function(y){return sv(row["F"+y+"_all_fatal"]);}),borderColor:ORS.blue,fill:false,tension:.3,borderWidth:2.5,pointRadius:4},{label:"Opioid Fatal",data:yrs.map(function(y){return sv(row["F"+y+"_opioid"]);}),borderColor:ORS.red,fill:false,tension:.3,borderWidth:2,pointRadius:3}]);
+  return lineChart("Fatal Overdose Trend — "+cleanName(row.NAME)+" County (2018–2025, CDC WONDER)",DS.fatal,yrs,[{label:"All Fatal ODs",data:yrs.map(function(y){return sv(row["F"+y+"_all_fatal"]);}),borderColor:ORS.blue,fill:false,tension:.3,borderWidth:2.5,pointRadius:4},{label:"Opioid Fatal ODs",data:yrs.map(function(y){return sv(row["F"+y+"_opioid"]);}),borderColor:ORS.red,fill:false,tension:.3,borderWidth:2,pointRadius:3}]);
 }
 function spikeChart(rows){
   var yrs=["2021","2022","2023","2024","2025"],isMulti=rows.length>1;
   var datasets=isMulti?rows.map(function(r,i){return{label:cleanName(r.NAME),data:yrs.map(function(y){return sv(r["SpikeEvents_"+y]);}),backgroundColor:CC[i],borderRadius:4};}):[ {label:cleanName(rows[0].NAME)+" County",data:yrs.map(function(y){return sv(rows[0]["SpikeEvents_"+y]);}),backgroundColor:ORS.blue,borderRadius:4},{label:"KS Average",data:yrs.map(function(y){return sv(stateAvgs["SpikeEvents_"+y]);}),backgroundColor:ORS.lb,borderRadius:4}];
-  return barChart("EARS Spike Events"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County vs KS Average"),DS.spikes,yrs,datasets);
+  return barChart("EARS Spike Events (2021–2025)"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County vs KS Average"),DS.spikes,yrs,datasets);
 }
 function edAgeChart(rows){
   var lbls=["0-4","5-11","12-17","18-25","26-34","35-44","45-54","55-64","65+"],isMulti=rows.length>1;
   function getVals(r){return[sv(r.visits_0_4_6yr),sv(r.visits_5_11_6yr),sv(r.visits_12_17_6yr),sv(r.visits_18_25_6yr),sv(r.visits_26_34_6yr),sv(r.visits_35_44_6yr),sv(r.visits_45_54_6yr),sv(r.visits_55_64_6yr),sv(r.visits_65plus_6yr)];}
   var datasets=isMulti?rows.map(function(r,i){return{label:cleanName(r.NAME),data:getVals(r),backgroundColor:CC[i],borderRadius:4};}):[ {label:"ED Visits by Age",data:getVals(rows[0]),backgroundColor:CC,borderRadius:4}];
-  return barChart("ED Visits by Age Group (2020-2025)"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County"),DS.ed,lbls,datasets,{responsive:true,plugins:{legend:{display:isMulti,position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"Visits",font:{family:"Arial",size:11}}}}});
+  return barChart("ED Visits by Age Group (2020–2025)"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County"),DS.ed,lbls,datasets,{responsive:true,plugins:{legend:{display:isMulti,position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"ED Visits",font:{family:"Arial",size:11}}}}});
 }
 function edRaceChart(rows){
   var lbls=["Hispanic","NH White","NH Black","NH Multiracial","NH AIAN"],isMulti=rows.length>1;
   function getVals(r){return[sv(r.visits_hispanic_6yr),sv(r.visits_nh_white_6yr),sv(r.visits_nh_black_6yr),sv(r.visits_nh_multiracial_6yr),sv(r.visits_nh_aian_6yr)];}
   var datasets=isMulti?rows.map(function(r,i){return{label:cleanName(r.NAME),data:getVals(r),backgroundColor:CC[i],borderRadius:4};}):[ {label:"ED Visits",data:getVals(rows[0]),backgroundColor:CC,borderRadius:4}];
-  return barChart("ED Visits by Race/Ethnicity (2020-2025)"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County"),DS.ed,lbls,datasets,{responsive:true,plugins:{legend:{display:isMulti,position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"Visits",font:{family:"Arial",size:11}}}}});
+  return barChart("ED Visits by Race/Ethnicity (2020–2025)"+(isMulti?" — Selected Counties":" — "+cleanName(rows[0].NAME)+" County"),DS.ed,lbls,datasets,{responsive:true,plugins:{legend:{display:isMulti,position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"ED Visits",font:{family:"Arial",size:11}}}}});
 }
 function suicideCountChart(rows){
   var r=rows[0];
-  var lbls=["Suicide Attempt","Suicidal Ideation","Suicide Related","Depression","Anxiety","Mental Health"];
   var vals=[sv(r.suicide_attempt_6yr),sv(r.suicidal_ideation_6yr),sv(r.suicide_related_6yr),sv(r.depression_6yr),sv(r.anxiety_6yr),sv(r.mental_health_6yr)];
   if(vals.every(function(v){return v===0;})) return null;
-  return hbarChart("Mental Health & Suicide ED Visits — "+cleanName(r.NAME)+" County (2020-2025)",DS.ed,lbls,vals,[ORS.dkred,ORS.red,ORS.orange,ORS.purple,ORS.teal,ORS.blue]);
+  return hbarChart("Mental Health & Suicide ED Visits — "+cleanName(r.NAME)+" County (2020–2025)",DS.ed,["Suicide Attempt","Suicidal Ideation","Suicide Related","Depression","Anxiety","Mental Health"],vals,[ORS.dkred,ORS.red,ORS.orange,ORS.purple,ORS.teal,ORS.blue]);
 }
 function suicidePctChart(rows){
   var r=rows[0];
-  // pct_ already in percent form — no *100
   var vals=[sv(r.pct_suicide_att_6yr),sv(r.pct_suicide_rel_6yr)];
   var ksVals=[sv(stateAvgs.pct_suicide_att_6yr),sv(stateAvgs.pct_suicide_rel_6yr)];
   if(vals.every(function(v){return v===0;})) return null;
-  return barChart("Suicide-Related ED Visits (% of Total) — "+cleanName(r.NAME)+" County vs KS Average",DS.ed,["% Suicide Attempt","% Suicide Related"],[{label:cleanName(r.NAME)+" County",data:vals,backgroundColor:ORS.red,borderRadius:4},{label:"KS Average",data:ksVals,backgroundColor:ORS.lb,borderRadius:4}],{responsive:true,plugins:{legend:{position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"% of ED Visits",font:{family:"Arial",size:11}}}}});
+  return barChart("Suicide-Related ED Visits (% of Total, 2020–2025) — "+cleanName(r.NAME)+" County vs KS Average",DS.ed,["% Suicide Attempt","% Suicide Related"],[{label:cleanName(r.NAME)+" County",data:vals,backgroundColor:ORS.red,borderRadius:4},{label:"KS Average",data:ksVals,backgroundColor:ORS.lb,borderRadius:4}],{responsive:true,plugins:{legend:{position:"bottom",labels:{font:{family:"Arial",size:11}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"% of ED Visits",font:{family:"Arial",size:11}}}}});
 }
 function repeatVisitChart(rows){
   var r=rows[0];
   var vals=[sv(r.rapid30_6yr),sv(r.rapid90_6yr),sv(r.rapid180_6yr)];
   if(vals.every(function(v){return v===0;})) return null;
-  return hbarChart("Repeat ED Visits by Return Window — "+cleanName(r.NAME)+" County (2020-2025, visit-based)",DS.ed,["Return <30 days","Return <90 days","Return <180 days"],vals,[ORS.dkred,ORS.red,ORS.orange]);
+  return hbarChart("Repeat ED Visits by Return Window — "+cleanName(r.NAME)+" County (2020–2025, visit-based)",DS.ed,["Return <30 days","Return <90 days","Return <180 days"],vals,[ORS.dkred,ORS.red,ORS.orange]);
 }
 function edDispositionChart(rows){
   var r=rows[0];
   var vals=[sv(r.disp_discharged_6yr),sv(r.disp_admitted_6yr),sv(r.disp_transferred_6yr),sv(r.disp_deceased_6yr)];
   if(vals.every(function(v){return v===0;})) return null;
-  return donutChart("ED Disposition (2020-2025) — "+cleanName(r.NAME)+" County",DS.ed,["Discharged","Admitted","Transferred","Deceased"],vals);
+  return donutChart("ED Disposition (2020–2025) — "+cleanName(r.NAME)+" County",DS.ed,["Discharged","Admitted","Transferred","Deceased"],vals);
 }
 function naloxoneChart(rows,peers){
   var isMulti=rows.length>1;
   var lbls=isMulti?rows.map(function(r){return cleanName(r.NAME);}):([cleanName(rows[0].NAME)].concat(peers?peers.map(function(p){return cleanName(p.NAME);}):[])).concat(["KS Average"]);
   var vals=isMulti?rows.map(function(r){return sv(r.rate_total_per1k);}):([sv(rows[0].rate_total_per1k)].concat(peers?peers.map(function(p){return sv(p.rate_total_per1k);}):[])).concat([sv(stateAvgs.rate_total_per1k)]);
-  return barChart("OD Rate per 1,000 — "+(isMulti?"Selected Counties vs KS Average":cleanName(rows[0].NAME)+" County vs Peers"),DS.naloxone,lbls,[{label:"Rate/1k",data:vals,backgroundColor:vals.map(function(v,i){return i===0?ORS.blue:i===vals.length-1?ORS.gray:ORS.teal;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"Rate per 1,000",font:{family:"Arial",size:11}}}}});
+  return barChart("EMS OD Rate per 1,000 (2020–2025) — "+(isMulti?"Selected Counties vs KS Average":cleanName(rows[0].NAME)+" County vs Peers"),DS.naloxone,lbls,[{label:"Rate/1k",data:vals,backgroundColor:vals.map(function(v,i){return i===0?ORS.blue:i===vals.length-1?ORS.gray:ORS.teal;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"Rate per 1,000",font:{family:"Arial",size:11}}}}});
 }
 function demoChart(row){
-  return hbarChart("Fatal OD Demographics (2018-2025) — "+cleanName(row.NAME)+" County",DS.demographics,["Age 25-34","Age 35-44","Age 45-54","Male","Female","Hispanic","NH White","NH Black"],[sv(row.F25to34_2018_2025),sv(row.F35to44_2018_2025),sv(row.F45to54_2018_2025),sv(row.male_2018_2025),sv(row.female_2018_2025),sv(row.hispanic_2018_2025),sv(row.NH_White_2018_2025),sv(row.NH_Black_2018_2025)],CC);
+  return hbarChart("Fatal OD Demographics (2018–2025, CDC WONDER) — "+cleanName(row.NAME)+" County",DS.demographics,["Age 25-34","Age 35-44","Age 45-54","Male","Female","Hispanic","NH White","NH Black"],[sv(row.F25to34_2018_2025),sv(row.F35to44_2018_2025),sv(row.F45to54_2018_2025),sv(row.male_2018_2025),sv(row.female_2018_2025),sv(row.hispanic_2018_2025),sv(row.NH_White_2018_2025),sv(row.NH_Black_2018_2025)],CC);
 }
-
-// FIX: Multi-county comparison bar chart for core/general queries
 function multiCompareChart(rows){
-  var metrics=[{field:"rate_total_per1k",label:"OD Rate/1k"},{field:"est_kits_needed_annual_high",label:"Naloxone Kits (high)"},{field:"crude_rate_all_fatal_per100k",label:"Fatal Rate/100k"},{field:"visits_6yr",label:"ED Visits (6yr)"}];
+  var metrics=[{field:"rate_total_per1k",label:"EMS OD Rate/1k (2020–2025)"},{field:"est_kits_needed_annual_high",label:"Naloxone Kits Needed (high est., annual)"},{field:"crude_rate_all_fatal_per100k",label:"Fatal OD Rate per 100k (2018–2025)"},{field:"visits_6yr",label:"ED Visits (2020–2025)"}];
   var charts=[];
   metrics.forEach(function(m){
     var vals=rows.map(function(r){return sv(r[m.field]);});
@@ -585,12 +569,12 @@ function multiCompareChart(rows){
 function troopEMSChart(){
   var labels=Object.keys(KHP).map(function(l){return "Troop "+l;});
   var vals=Object.keys(KHP).map(function(l){return KHP[l].c.reduce(function(acc,f){var r=countyData.find(function(x){return padFIPS(x.FIPS)===f&&x.suppress_small_total!==1;});return acc+(r?sv(r.incidents_total):0);},0);});
-  return barChart("EMS Overdose Incidents by KHP Troop (2020-2025)",DS.core,labels,[{label:"EMS Incidents",data:vals,backgroundColor:ORS.blue,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+  return barChart("EMS Overdose Incidents by KHP Troop (2020–2025)",DS.core,labels,[{label:"EMS Incidents",data:vals,backgroundColor:ORS.blue,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
 }
 function troopEDChart(){
   var labels=Object.keys(KHP).map(function(l){return "Troop "+l;});
   var vals=Object.keys(KHP).map(function(l){return KHP[l].c.reduce(function(acc,f){var r=countyData.find(function(x){return padFIPS(x.FIPS)===f&&x.suppress_small_total!==1&&x.no_essence_data!==1;});return acc+(r?sv(r.visits_6yr):0);},0);});
-  return barChart("ED Overdose Visits by KHP Troop (2020-2025)",DS.ed,labels,[{label:"ED Visits",data:vals,backgroundColor:ORS.teal,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+  return barChart("ED Overdose Visits by KHP Troop (2020–2025)",DS.ed,labels,[{label:"ED Visits",data:vals,backgroundColor:ORS.teal,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
 }
 function troopRateChart(l){
   var troop=KHP[l];
@@ -598,7 +582,7 @@ function troopRateChart(l){
   rows.sort(function(a,b){return sv(b.rate_total_per1k)-sv(a.rate_total_per1k);});
   var vals=rows.map(function(r){return sv(r.rate_total_per1k);});
   var ks=sv(stateAvgs.rate_total_per1k);
-  return barChart("OD Rate/1k — KHP "+troop.name+" (ranked)",DS.core,rows.map(function(r){return cleanName(r.NAME);}), [{label:"Rate/1k",data:vals,backgroundColor:vals.map(function(v){return v>ks*1.1?ORS.red:v<ks*0.9?ORS.teal:ORS.blue;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+  return barChart("EMS OD Rate/1k (2020–2025) — KHP "+troop.name+" (ranked)",DS.core,rows.map(function(r){return cleanName(r.NAME);}), [{label:"Rate/1k",data:vals,backgroundColor:vals.map(function(v){return v>ks*1.1?ORS.red:v<ks*0.9?ORS.teal:ORS.blue;}),borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
 }
 function troopNaloxoneChart(l){
   var troop=KHP[l];
@@ -607,7 +591,7 @@ function troopNaloxoneChart(l){
   var total=rows.reduce(function(a,r){return a+sv(r.est_kits_needed_annual_high);},0);
   var sup=troop.c.filter(function(f){var r=countyData.find(function(x){return padFIPS(x.FIPS)===f;});return r&&r.suppress_small_total===1;});
   var wrapper=document.createElement("div");
-  wrapper.appendChild(barChart("Naloxone Kits Needed (High, Annual) — KHP "+troop.name,DS.naloxone,rows.map(function(r){return cleanName(r.NAME);}), [{label:"Kits",data:rows.map(function(r){return sv(r.est_kits_needed_annual_high);}),backgroundColor:ORS.dkred,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}));
+  wrapper.appendChild(barChart("Naloxone Kits Needed (High Est., Annual) — KHP "+troop.name,DS.naloxone,rows.map(function(r){return cleanName(r.NAME);}), [{label:"Kits",data:rows.map(function(r){return sv(r.est_kits_needed_annual_high);}),backgroundColor:ORS.dkred,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}));
   var tel=document.createElement("div");tel.className="troop-total";tel.textContent="Troop Total: "+Math.round(total).toLocaleString()+" kits/year";wrapper.appendChild(tel);
   if(sup.length){var fn=document.createElement("div");fn.className="footnote";fn.textContent="Suppressed (excluded): "+sup.map(function(f){return FC[f]||f;}).join(", ");wrapper.appendChild(fn);}
   return wrapper;
@@ -618,7 +602,7 @@ function troopEDAgeChart(l){
   var fields=["visits_0_4_6yr","visits_5_11_6yr","visits_12_17_6yr","visits_18_25_6yr","visits_26_34_6yr","visits_35_44_6yr","visits_45_54_6yr","visits_55_64_6yr","visits_65plus_6yr"];
   var vals=fields.map(function(f){return rows.reduce(function(a,r){return a+sv(r[f]);},0);});
   if(vals.every(function(v){return v===0;})) return null;
-  return barChart("ED Visits by Age — KHP "+troop.name+" (summed)",DS.ed,["0-4","5-11","12-17","18-25","26-34","35-44","45-54","55-64","65+"],[{label:"Visits",data:vals,backgroundColor:CC,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+  return barChart("ED Visits by Age — KHP "+troop.name+" (2020–2025, summed)",DS.ed,["0-4","5-11","12-17","18-25","26-34","35-44","45-54","55-64","65+"],[{label:"Visits",data:vals,backgroundColor:CC,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
 }
 function troopSuicideChart(l){
   var troop=KHP[l];
@@ -626,28 +610,114 @@ function troopSuicideChart(l){
   var fields=["suicide_attempt_6yr","suicidal_ideation_6yr","suicide_related_6yr","depression_6yr","anxiety_6yr","mental_health_6yr"];
   var vals=fields.map(function(f){return rows.reduce(function(a,r){return a+sv(r[f]);},0);});
   if(vals.every(function(v){return v===0;})) return null;
-  return hbarChart("Mental Health & Suicide ED — KHP "+troop.name+" (summed)",DS.ed,["Suicide Attempt","Suicidal Ideation","Suicide Related","Depression","Anxiety","Mental Health"],vals,[ORS.dkred,ORS.red,ORS.orange,ORS.purple,ORS.teal,ORS.blue]);
+  return hbarChart("Mental Health & Suicide ED — KHP "+troop.name+" (2020–2025, summed)",DS.ed,["Suicide Attempt","Suicidal Ideation","Suicide Related","Depression","Anxiety","Mental Health"],vals,[ORS.dkred,ORS.red,ORS.orange,ORS.purple,ORS.teal,ORS.blue]);
 }
 function buildComboTable(row){
   var rows=[];for(var i=1;i<=5;i++){var c=row["TopCombo_"+i],n=row["TopCombo_"+i+"_Incidents"];if(c&&n!==null)rows.push([c,Math.round(n)]);}
   if(!rows.length) return null;rows.sort(function(a,b){return b[1]-a[1];});
   var div=document.createElement("div");div.className="tbl-wrap";
-  div.innerHTML='<div class="tbl-title">Top Polysubstance Combinations (2020-2025)</div><table class="data-table"><thead><tr><th>Drug Combination</th><th>Incidents</th></tr></thead><tbody>'+rows.map(function(r){return'<tr><td>'+r[0]+'</td><td>'+r[1].toLocaleString()+'</td></tr>';}).join("")+'</tbody></table><div class="tbl-source">'+DS.drugs+'</div>';
+  div.innerHTML='<div class="tbl-title">Top Polysubstance Combinations — EMS Incidents (2020–2025)</div><table class="data-table"><thead><tr><th>Drug Combination</th><th>Incidents</th></tr></thead><tbody>'+rows.map(function(r){return'<tr><td>'+r[0]+'</td><td>'+r[1].toLocaleString()+'</td></tr>';}).join("")+'</tbody></table><div class="tbl-source">'+DS.drugs+'</div>';
   return div;
 }
 function buildDxTable(row){
   var divs=[];
-  [{sfx:"6yr",lbl:"ED Diagnosis Codes (2020-2025)"},{sfx:"2425",lbl:"ED Diagnosis Codes (2024-25)"}].forEach(function(p){
+  [{sfx:"6yr",lbl:"Top ED Diagnosis Codes (2020–2025)"},{sfx:"2425",lbl:"Top ED Diagnosis Codes (2024–25)"}].forEach(function(p){
     var rows=[];for(var i=1;i<=5;i++){var c=row["dx"+p.sfx+"_rank"+i],n=row["dx"+p.sfx+"_rank"+i+"_n"];if(c&&n!==null)rows.push([c,Math.round(n)]);}
     if(!rows.length) return;rows.sort(function(a,b){return b[1]-a[1];});
     var div=document.createElement("div");div.className="tbl-wrap";
-    div.innerHTML='<div class="tbl-title">'+p.lbl+'</div><table class="data-table"><thead><tr><th>Diagnosis Code</th><th>Visits</th></tr></thead><tbody>'+rows.map(function(r){return'<tr><td>'+r[0]+'</td><td>'+r[1].toLocaleString()+'</td></tr>';}).join("")+'</tbody></table><div class="tbl-source">'+DS.ed+'</div>';
+    div.innerHTML='<div class="tbl-title">'+p.lbl+'</div><table class="data-table"><thead><tr><th>Diagnosis Code</th><th>ED Visits</th></tr></thead><tbody>'+rows.map(function(r){return'<tr><td>'+r[0]+'</td><td>'+r[1].toLocaleString()+'</td></tr>';}).join("")+'</tbody></table><div class="tbl-source">'+DS.ed+'</div>';
     divs.push(div);
   });
   return divs.length?divs:null;
 }
 
 // ── Map builders ───────────────────────────────────────────────────────────
+// FIX 2: Download map — project GeoJSON to canvas, no tile dependency
+function exportMapToCanvas(mapInstance, wrapperEl, dlTitle){
+  var btn=wrapperEl.querySelector(".dl-btn");
+  if(btn){btn.textContent="Preparing…";btn.disabled=true;}
+  var container=mapInstance.getContainer();
+  var W=container.offsetWidth||700, H=container.offsetHeight||380, SCALE=2;
+  var cvs=document.createElement("canvas");
+  cvs.width=W*SCALE; cvs.height=(H+80)*SCALE;
+  var ctx=cvs.getContext("2d");
+  ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,cvs.width,cvs.height);
+
+  function ll2px(lat,lng){
+    var pt=mapInstance.latLngToContainerPoint(L.latLng(lat,lng));
+    return{x:pt.x*SCALE, y:(pt.y+40)*SCALE};
+  }
+
+  // Title
+  var titleEl=wrapperEl.querySelector(".map-title");
+  ctx.font="bold "+(11*SCALE)+"px Arial";
+  ctx.fillStyle="#325379";
+  ctx.fillText(titleEl?titleEl.textContent:dlTitle, 8*SCALE, 26*SCALE);
+
+  // Draw GeoJSON layers
+  mapInstance.eachLayer(function(layer){
+    if(typeof layer.eachLayer!=="function") return;
+    layer.eachLayer(function(sub){
+      if(!sub.feature) return;
+      var geo=sub.feature.geometry;
+      var opts=sub.options;
+      var fc=opts.fillColor, fo=opts.fillOpacity!==undefined?opts.fillOpacity:0.85;
+      var sc=opts.color||"#aaa", sw=Math.max(0.5,(opts.weight||1))*SCALE*0.4;
+      var fill=(fc&&fc.indexOf("url(")===0)?"#cccccc":(fc||"#E5EEF1");
+      function drawRings(rings){
+        rings.forEach(function(ring){
+          if(!ring.length) return;
+          var p0=ll2px(ring[0][1],ring[0][0]);
+          ctx.moveTo(p0.x,p0.y);
+          for(var i=1;i<ring.length;i++){var pi=ll2px(ring[i][1],ring[i][0]);ctx.lineTo(pi.x,pi.y);}
+          ctx.closePath();
+        });
+      }
+      ctx.beginPath();
+      if(geo.type==="Polygon") drawRings(geo.coordinates);
+      else if(geo.type==="MultiPolygon") geo.coordinates.forEach(function(poly){drawRings(poly);});
+      else return;
+      ctx.globalAlpha=fo; ctx.fillStyle=fill; ctx.fill("evenodd");
+      ctx.globalAlpha=1; ctx.strokeStyle=sc; ctx.lineWidth=sw; ctx.stroke();
+    });
+  });
+
+  // Legend
+  var legendEl=wrapperEl.querySelector(".map-legend");
+  var sourceEl=wrapperEl.querySelector(".chart-source");
+  var lx=8*SCALE, ly=(H+46)*SCALE, swSize=10*SCALE;
+  ctx.font=(8*SCALE)+"px Arial";
+  if(legendEl){
+    legendEl.querySelectorAll(".map-legend-item").forEach(function(item){
+      var swatch=item.querySelector(".map-swatch");
+      var label=item.textContent.trim();
+      if(swatch){
+        var bg=swatch.style.backgroundColor||swatch.style.background||"#ccc";
+        ctx.fillStyle=(bg.indexOf("repeating")>=0)?"#cccccc":bg;
+        ctx.fillRect(lx,ly,swSize,swSize);
+        ctx.strokeStyle="#aaa"; ctx.lineWidth=0.5*SCALE; ctx.strokeRect(lx,ly,swSize,swSize);
+      }
+      ctx.fillStyle="#555";
+      ctx.fillText(label, lx+swSize+3*SCALE, ly+8*SCALE);
+      lx+=ctx.measureText(label).width+swSize+10*SCALE;
+      if(lx>(W-60)*SCALE){lx=8*SCALE;ly+=14*SCALE;}
+    });
+  }
+  if(sourceEl){ctx.font=(7*SCALE)+"px Arial";ctx.fillStyle="#999";ctx.fillText(sourceEl.textContent,8*SCALE,cvs.height-6*SCALE);}
+
+  try{
+    var a=document.createElement("a");
+    a.download="KODA_"+dlTitle.replace(/[^a-zA-Z0-9_]/g,"_")+".png";
+    a.href=cvs.toDataURL("image/png"); a.click();
+  }catch(e){alert("Download blocked by browser. Right-click the map to save.");}
+  if(btn){btn.textContent="⬇ Download Map";btn.disabled=false;}
+}
+
+function bindMapDownload(wrapperEl,mapInstance,dlTitle){
+  var btn=wrapperEl.querySelector(".dl-btn");
+  if(btn) btn.onclick=function(){exportMapToCanvas(mapInstance,wrapperEl,dlTitle);};
+}
+
 function mkMapWrapper(id,title,legendItems,source,dlTitle,cls){
   var w=document.createElement("div");w.id="mw-"+id;
   w.innerHTML='<div class="map-title">'+title+'</div><div id="'+id+'" class="'+(cls||"tract-map")+'"></div>'+
@@ -655,50 +725,12 @@ function mkMapWrapper(id,title,legendItems,source,dlTitle,cls){
       if(x[0]==="Suppressed (hatch)") return'<div class="map-legend-item"><div class="map-swatch" style="background:repeating-linear-gradient(45deg,#ccc,#ccc 2px,#eee 2px,#eee 6px);border:1px solid #bbb"></div>'+x[0]+'</div>';
       return'<div class="map-legend-item"><div class="map-swatch" style="background:'+x[1]+'"></div>'+x[0]+'</div>';
     }).join("")+'</div>'+(source?'<div class="chart-source">'+source+'</div>':'')+
-    '<button class="dl-btn" id="dlb-'+id+'">&#8681; Download Map</button>';
-  setTimeout(function(){
-    var btn=document.getElementById("dlb-"+id);
-    if(btn) btn.onclick=function(){
-      var el=document.getElementById("mw-"+id);
-      if(!el) return;
-      // Brief delay to ensure tiles are fully rendered before capture
-      btn.textContent="Preparing…";
-      setTimeout(function(){
-        html2canvas(el,{
-          backgroundColor:"#ffffff",
-          scale:2,
-          useCORS:true,
-          allowTaint:false,
-          logging:false,
-          imageTimeout:8000
-        }).then(function(cv){
-          var a=document.createElement("a");
-          a.download="KODA_"+dlTitle.replace(/[^a-zA-Z0-9]/g,"_")+".png";
-          a.href=cv.toDataURL("image/png");
-          a.click();
-          btn.textContent="⬇ Download Map";
-        }).catch(function(err){
-          console.warn("html2canvas error:",err);
-          // Fallback: open map wrapper in new tab for manual save
-          var win=window.open("","_blank");
-          if(win){
-            win.document.write('<html><body style="margin:0;background:#fff">');
-            win.document.write(el.outerHTML);
-            win.document.write('</body></html>');
-            win.document.close();
-          }
-          btn.textContent="⬇ Download Map";
-          alert("Auto-download blocked by browser. The map has been opened in a new tab — right-click to save.");
-        });
-      },600);
-    };
-  },300);
+    '<button class="dl-btn">⬇ Download Map</button>';
   return w;
 }
-// Called at end of every _init to bind the download button to the live map instance
-function bindMapDownload(wrapperEl, mapInstance, dlTitle){
-  var btn = wrapperEl.querySelector(".dl-btn");
-  if(btn) btn.onclick = function(){ exportMapToCanvas(mapInstance, wrapperEl, dlTitle); };
+
+function mkTiles(map,maxZoom){
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:maxZoom||14,attribution:""}).addTo(map);
 }
 
 async function fetchTractGeo(sn,cn){
@@ -707,7 +739,6 @@ async function fetchTractGeo(sn,cn){
   var r2=await fetch("https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Census2020/MapServer/8/query?where="+where+"&outFields=TRACT,GEOID&f=geojson&outSR=4326");return await r2.json();
 }
 async function fetchCountyGeo(){if(countyGeo)return countyGeo;var r=await fetch(COUNTY_GEO_URL);countyGeo=await r.json();return countyGeo;}
-
 function buildTractLookup(fips){
   var cn=parseInt(fips.slice(2));
   var tracts=tractData?tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===cn;}):[];
@@ -715,138 +746,7 @@ function buildTractLookup(fips){
   return{lkp:lkp,tracts:tracts};
 }
 
-// FIX: Multi-county choropleth — use statewide quantile breaks, not just selected rows
-async function buildMultiCountyChoropleth(selectedFipsArr,countyRows,topic){
-  var metric=getChoroMetric(topic);
-  var mid="map-"+(++mapCnt);
-  var names=countyRows.map(function(r){return cleanName(r.NAME);}).join(", ");
-
-  // Legend
-  var legend;
-  if(metric.ecoMode) legend=ECO_LEGEND;
-  else if(metric.burdenMode) legend=[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]];
-  else legend=[["Top 10% statewide",ORS.dkred],["75th-90th",ORS.red],["50th-75th",ORS.orange],["25th-50th",ORS.yellow],["Below 25th","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]];
-
-  var w=mkMapWrapper(mid,metric.label+" by County — "+names,legend,"Source: ODMAP 2020-2025 | Kansas ORS",names+"_Map","county-map");
-  var selSet=new Set(selectedFipsArr);
-
-  // Compute statewide quantile breaks for numeric metrics
-  var numBreaks=null;
-  if(!metric.categorical&&countyData){
-    var allVals=countyData.filter(function(r){return r.suppress_small_total!==1&&r[metric.field]!=null;}).map(function(r){return sv(r[metric.field]);}).filter(function(v){return v>0;}).sort(function(a,b){return a-b;});
-    if(allVals.length>=10){
-      function qv(arr,q){return arr[Math.floor(arr.length*q)]||0;}
-      numBreaks=[qv(allVals,.25),qv(allVals,.5),qv(allVals,.75),qv(allVals,.9)];
-    }
-  }
-
-  w._init=async function(){
-    try{
-      var geo=await fetchCountyGeo();if(!geo||!geo.features||!geo.features.length)return;
-      var map=L.map(mid,{zoomControl:true,attributionControl:false});
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:10}).addTo(map);
-      var hatch=addHatch(map);
-      function getColor(r){
-        if(!r||r.suppress_small_total===1)return hatch;
-        var v=r[metric.field];if(v===null||v===undefined)return "#E5EEF1";
-        if(metric.ecoMode) return ecoColor(v);
-        if(metric.burdenMode) return burdenColor(v);
-        var n=sv(v);
-        if(numBreaks){if(n>=numBreaks[3])return ORS.dkred;if(n>=numBreaks[2])return ORS.red;if(n>=numBreaks[1])return ORS.orange;if(n>=numBreaks[0])return ORS.yellow;return "#E5EEF1";}
-        return ORS.blue;
-      }
-      var selFeatures=[];
-      L.geoJSON(geo,{
-        style:function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!selSet.has(fips))return{fillColor:"#E7E9EC",weight:0.5,color:"#ccc",fillOpacity:0.4};var isSup=r&&r.suppress_small_total===1;return{fillColor:isSup?hatch:getColor(r),weight:2.5,color:"#325379",fillOpacity:isSup?1:0.88};},
-        onEachFeature:function(f,lyr){
-          var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");if(!selSet.has(fips))return;
-          var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});selFeatures.push(lyr);
-          if(r){var val=r[metric.field];var dv=metric.categorical?(val||"--"):fmt(val,metric.field);
-            lyr.bindTooltip("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dv,{permanent:true,direction:"center",className:"county-label"});
-            lyr.bindPopup("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dv+"<br/>EB Rate/1k: "+fmt(r.odmap_eb_rate_total_per1k,"per1k")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>Ecosystem: "+(r.ecosystem_type||"--")+(r.suppress_small_total===1?"<br/><em>Data suppressed</em>":""));
-          }
-        }
-      }).addTo(map);
-      if(selFeatures.length)map.fitBounds(L.featureGroup(selFeatures).getBounds(),{padding:[40,40]});
-      bindMapDownload(w, map, names+"_Map");
-    }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };
-  return w;
-}
-
-// Multi-county tract map — supports both burden and ecosystem modes
-async function buildMultiCountyTractMap(countyRows,ecoMode){
-  var mid="map-"+(++mapCnt);
-  var names=countyRows.map(function(r){return cleanName(r.NAME);}).join(", ");
-  var allFips=countyRows.map(function(r){return padFIPS(r.FIPS);});
-  var allTracts=[];
-  allFips.forEach(function(fips){var cn=parseInt(fips.slice(2));var tracts=tractData?tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===cn;}):[];allTracts=allTracts.concat(tracts);});
-  var lkp={};allTracts.forEach(function(t){var id=String(parseInt(t.TRACT_FIPS||0)).padStart(6,"0");lkp[id]=t;lkp[String(parseInt(t.TRACT_FIPS||0))]=t;});
-  var legend=ecoMode?ECO_LEGEND:[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]];
-  var title=(ecoMode?"Drug Ecosystem":"Overdose Burden")+" by Census Tract — "+names;
-  var w=mkMapWrapper(mid,title,legend,"Source: ODMAP 2020-2025 | Kansas ORS",names+"_Tract_Map");
-  w._init=async function(){
-    try{
-      var allFeatures=[];
-      for(var i=0;i<allFips.length;i++){var fips=allFips[i];var geo=await fetchTractGeo(fips.slice(0,2),parseInt(fips.slice(2)));if(geo&&geo.features)allFeatures=allFeatures.concat(geo.features);}
-      if(!allFeatures.length)return;
-      var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);
-      var hatch=addHatch(map);
-      function getColor(t){if(ecoMode)return ecoColor(t.ecosystem_type);return burdenColor(t.burden_tier);}
-      L.geoJSON({type:"FeatureCollection",features:allFeatures},{
-        style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:getColor(t),weight:1,color:"#fff",fillOpacity:.85};},
-        onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Burden: "+(t.burden_tier||"--")+"<br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>EB Rate/1k: "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Incidents: "+fmt(t.incidents_total,"")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":"Kits/yr: "+fmt(t.est_kits_needed_annual_median,"")));}
-      }).addTo(map);
-      map.fitBounds(L.geoJSON({type:"FeatureCollection",features:allFeatures}).getBounds(),{padding:[10,10]});
-      bindMapDownload(w, map, names+"_Tract_Map");
-    }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };
-  return w;
-}
-
-async function buildTractMap(fips,cname){
-  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
-  if(!tl.tracts.length)return null;
-  var mid="map-"+(++mapCnt);
-  var w=mkMapWrapper(mid,"Census Tract Burden — "+cname+" County",[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]],"Source: ODMAP 2020-2025 | Kansas ORS",cname+"_Burden_Map");
-  w._init=async function(){
-    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:burdenColor(t.burden_tier),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Burden: "+(t.burden_tier||"--")+"<br/>EB Rate/1k: "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>Hospital Transport: "+fmt(t.hospital_rate,"hospital_rate")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":"Kits/yr: "+fmt(t.est_kits_needed_annual_median,"")));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_Burden_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };return w;
-}
-
-async function buildEBRateMap(fips,cname){
-  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
-  if(!tl.tracts.length)return null;
-  var allRates=tractData?tractData.filter(function(r){return r.eb_rate_total_per1k&&r.suppress_small_total!==1;}).map(function(r){return r.eb_rate_total_per1k;}).sort(function(a,b){return a-b;}):[];
-  function quantile(arr,q){return arr[Math.floor(arr.length*q)]||0;}
-  var q25=quantile(allRates,.25),q50=quantile(allRates,.5),q75=quantile(allRates,.75),q90=quantile(allRates,.9);
-  function ebColor(t){var v=t.eb_rate_total_per1k||0;if(v>=q90)return ORS.dkred;if(v>=q75)return ORS.red;if(v>=q50)return ORS.orange;if(v>=q25)return ORS.yellow;return "#E5EEF1";}
-  var mid="map-"+(++mapCnt);
-  var w=mkMapWrapper(mid,"EB-Adjusted OD Rate per 1,000 — "+cname+" County (statewide quantile)",[["Top 10%",ORS.dkred],["75-90th pctile",ORS.red],["50-75th pctile",ORS.orange],["25-50th pctile",ORS.yellow],["Below 25th","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"]],"Source: ODMAP 2020-2025 | Kansas ORS",cname+"_EB_Rate_Map");
-  w._init=async function(){
-    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ebColor(t),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>EB Rate/1k: "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Burden: "+(t.burden_tier||"--")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_EB_Rate_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };return w;
-}
-
-async function buildEcoMap(fips,cname){
-  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
-  if(!tl.tracts.length)return null;
-  var mid="map-"+(++mapCnt);
-  var w=mkMapWrapper(mid,"Drug Ecosystem by Tract — "+cname+" County",ECO_LEGEND,"Source: ODMAP 2020-2025 | Kansas ORS",cname+"_Ecosystem_Map");
-  w._init=async function(){
-    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:14}).addTo(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ecoColor(t.ecosystem_type),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>EB Rate/1k: "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };return w;
-}
-
-// Shared tile layer factory — crossOrigin required for html2canvas downloads
-function mkTiles(map,maxZoom){
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{
-    maxZoom:maxZoom||14,
-    attribution:""
-  }).addTo(map);
-}
-
-// Shared helper: compute 5-shade statewide naloxone quantile breaks from all tracts
+// Naloxone helpers
 function getNaloxoneBreaks(){
   var allKits=tractData?tractData.filter(function(r){return r.est_kits_needed_annual_high&&r.suppress_small_total!==1;}).map(function(r){return r.est_kits_needed_annual_high;}).sort(function(a,b){return a-b;}):[];
   function qk(arr,q){return arr[Math.floor(arr.length*q)]||0;}
@@ -863,18 +763,109 @@ function naloxoneShadeColor(v,breaks){
 }
 var NALOX_LEGEND=[["Top 5% statewide",ORS.dkred],["80–95th pctile",ORS.red],["60–80th pctile",ORS.orange],["40–60th pctile",ORS.yellow],["20–40th pctile","#a8d5a2"],["Below 20th","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"]];
 
+async function buildMultiCountyChoropleth(selectedFipsArr,countyRows,topic){
+  var metric=getChoroMetric(topic);
+  var mid="map-"+(++mapCnt);
+  var names=countyRows.map(function(r){return cleanName(r.NAME);}).join(", ");
+  var legend;
+  if(metric.ecoMode) legend=ECO_LEGEND;
+  else if(metric.burdenMode) legend=[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]];
+  else legend=[["Top 10% statewide",ORS.dkred],["75th-90th",ORS.red],["50th-75th",ORS.orange],["25th-50th",ORS.yellow],["Below 25th","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]];
+  var w=mkMapWrapper(mid,metric.label+" by County — "+names,legend,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",names+"_Map","county-map");
+  var selSet=new Set(selectedFipsArr);
+  var numBreaks=null;
+  if(!metric.categorical&&countyData){
+    var allVals=countyData.filter(function(r){return r.suppress_small_total!==1&&r[metric.field]!=null;}).map(function(r){return sv(r[metric.field]);}).filter(function(v){return v>0;}).sort(function(a,b){return a-b;});
+    if(allVals.length>=10){function qv(arr,q){return arr[Math.floor(arr.length*q)]||0;}numBreaks=[qv(allVals,.25),qv(allVals,.5),qv(allVals,.75),qv(allVals,.9)];}
+  }
+  w._init=async function(){
+    try{
+      var geo=await fetchCountyGeo();if(!geo||!geo.features||!geo.features.length)return;
+      var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map,10);var hatch=addHatch(map);
+      function getColor(r){if(!r||r.suppress_small_total===1)return hatch;var v=r[metric.field];if(v===null||v===undefined)return "#E5EEF1";if(metric.ecoMode)return ecoColor(v);if(metric.burdenMode)return burdenColor(v);var n=sv(v);if(numBreaks){if(n>=numBreaks[3])return ORS.dkred;if(n>=numBreaks[2])return ORS.red;if(n>=numBreaks[1])return ORS.orange;if(n>=numBreaks[0])return ORS.yellow;return "#E5EEF1";}return ORS.blue;}
+      var selFeatures=[];
+      L.geoJSON(geo,{
+        style:function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!selSet.has(fips))return{fillColor:"#E7E9EC",weight:0.5,color:"#ccc",fillOpacity:0.4};var isSup=r&&r.suppress_small_total===1;return{fillColor:isSup?hatch:getColor(r),weight:2.5,color:"#325379",fillOpacity:isSup?1:0.88};},
+        onEachFeature:function(f,lyr){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");if(!selSet.has(fips))return;var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});selFeatures.push(lyr);if(r){var val=r[metric.field];var dv=metric.categorical?(val||"--"):fmt(val,metric.field);lyr.bindTooltip("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dv,{permanent:true,direction:"center"});lyr.bindPopup("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dv+"<br/>EB Rate/1k: "+fmt(r.odmap_eb_rate_total_per1k,"per1k")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>Ecosystem: "+(r.ecosystem_type||"--")+(r.suppress_small_total===1?"<br/><em>Data suppressed</em>":""));}}
+      }).addTo(map);
+      if(selFeatures.length)map.fitBounds(L.featureGroup(selFeatures).getBounds(),{padding:[40,40]});
+      bindMapDownload(w,map,names+"_Map");
+    }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };return w;
+}
+
+async function buildMultiCountyTractMap(countyRows,ecoMode){
+  var mid="map-"+(++mapCnt);
+  var names=countyRows.map(function(r){return cleanName(r.NAME);}).join(", ");
+  var allFips=countyRows.map(function(r){return padFIPS(r.FIPS);});
+  var allTracts=[];
+  allFips.forEach(function(fips){var cn=parseInt(fips.slice(2));var tracts=tractData?tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===cn;}):[];allTracts=allTracts.concat(tracts);});
+  var lkp={};allTracts.forEach(function(t){var id=String(parseInt(t.TRACT_FIPS||0)).padStart(6,"0");lkp[id]=t;lkp[String(parseInt(t.TRACT_FIPS||0))]=t;});
+  var legend=ecoMode?ECO_LEGEND:[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]];
+  var title=(ecoMode?"Drug Ecosystem":"EMS Overdose Burden")+" by Census Tract — "+names+" (2020–2025)";
+  var w=mkMapWrapper(mid,title,legend,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",names+"_Tract_Map");
+  w._init=async function(){
+    try{
+      var allFeatures=[];
+      for(var i=0;i<allFips.length;i++){var fips=allFips[i];var geo=await fetchTractGeo(fips.slice(0,2),parseInt(fips.slice(2)));if(geo&&geo.features)allFeatures=allFeatures.concat(geo.features);}
+      if(!allFeatures.length)return;
+      var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);
+      function getColor(t){if(ecoMode)return ecoColor(t.ecosystem_type);return burdenColor(t.burden_tier);}
+      L.geoJSON({type:"FeatureCollection",features:allFeatures},{
+        style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:getColor(t),weight:1,color:"#fff",fillOpacity:.85};},
+        onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Burden: "+(t.burden_tier||"--")+"<br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>EB Rate/1k (EMS, 2020–2025): "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>EMS Incidents: "+fmt(t.incidents_total,"")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":"Kits/yr: "+fmt(t.est_kits_needed_annual_median,"")));}
+      }).addTo(map);
+      map.fitBounds(L.geoJSON({type:"FeatureCollection",features:allFeatures}).getBounds(),{padding:[10,10]});
+      bindMapDownload(w,map,names+"_Tract_Map");
+    }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };return w;
+}
+
+async function buildTractMap(fips,cname){
+  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
+  if(!tl.tracts.length)return null;
+  var mid="map-"+(++mapCnt);
+  var w=mkMapWrapper(mid,"EMS Overdose Burden by Census Tract — "+cname+" County (2020–2025)",[["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]],"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",cname+"_Burden_Map");
+  w._init=async function(){
+    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:burdenColor(t.burden_tier),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Burden: "+(t.burden_tier||"--")+"<br/>EB Rate/1k (EMS, 2020–2025): "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>Hospital Transport: "+fmt(t.hospital_rate,"hospital_rate")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":"Kits/yr: "+fmt(t.est_kits_needed_annual_median,"")));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_Burden_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };return w;
+}
+
+async function buildEBRateMap(fips,cname){
+  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
+  if(!tl.tracts.length)return null;
+  var allRates=tractData?tractData.filter(function(r){return r.eb_rate_total_per1k&&r.suppress_small_total!==1;}).map(function(r){return r.eb_rate_total_per1k;}).sort(function(a,b){return a-b;}):[];
+  function quantile(arr,q){return arr[Math.floor(arr.length*q)]||0;}
+  var q25=quantile(allRates,.25),q50=quantile(allRates,.5),q75=quantile(allRates,.75),q90=quantile(allRates,.9);
+  function ebColor(t){var v=t.eb_rate_total_per1k||0;if(v>=q90)return ORS.dkred;if(v>=q75)return ORS.red;if(v>=q50)return ORS.orange;if(v>=q25)return ORS.yellow;return "#E5EEF1";}
+  var mid="map-"+(++mapCnt);
+  var w=mkMapWrapper(mid,"EB-Adjusted EMS OD Rate per 1,000 — "+cname+" County (Statewide Quantile, 2020–2025)",[["Top 10%",ORS.dkred],["75-90th pctile",ORS.red],["50-75th pctile",ORS.orange],["25-50th pctile",ORS.yellow],["Below 25th","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"]],"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",cname+"_EB_Rate_Map");
+  w._init=async function(){
+    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ebColor(t),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>EB EMS Rate/1k (2020–2025): "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Burden: "+(t.burden_tier||"--")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_EB_Rate_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };return w;
+}
+
+async function buildEcoMap(fips,cname){
+  var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
+  if(!tl.tracts.length)return null;
+  var mid="map-"+(++mapCnt);
+  var w=mkMapWrapper(mid,"Drug Ecosystem by Census Tract — "+cname+" County (2020–2025)",ECO_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",cname+"_Ecosystem_Map");
+  w._init=async function(){
+    try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ecoColor(t.ecosystem_type),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>EB EMS Rate/1k (2020–2025): "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_Ecosystem_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+  };return w;
+}
+
 async function buildNaloxoneMap(fips,cname){
   var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
   if(!tl.tracts.filter(function(r){return r.suppress_small_total!==1;}).length)return null;
   var breaks=getNaloxoneBreaks();
   var mid="map-"+(++mapCnt);
-  var w=mkMapWrapper(mid,"Naloxone Kit Need by Tract — "+cname+" County (statewide 5-shade quantile)",NALOX_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",cname+"_Naloxone_Map");
+  var w=mkMapWrapper(mid,"Naloxone Kit Need by Census Tract — "+cname+" County (Statewide 5-Shade Quantile)",NALOX_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",cname+"_Naloxone_Map");
   w._init=async function(){
     try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:naloxoneShadeColor(t.est_kits_needed_annual_high,breaks),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Kits/yr (high): "+fmt(t.est_kits_needed_annual_high,"")+"<br/>Kits/yr (median): "+fmt(t.est_kits_needed_annual_median,"")+"<br/>Naloxone gap: "+fmt(t.naloxone_gap,"gap")+"<br/>Expected opioid ODs/yr: "+fmt(t.expected_opioid_ods_annual,"")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_Naloxone_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
   };return w;
 }
 
-// Multi-county naloxone tract map (for troop naloxone drill-down)
 async function buildMultiCountyNaloxoneMap(countyRows){
   var mid="map-"+(++mapCnt);
   var names=countyRows.map(function(r){return cleanName(r.NAME);}).join(", ");
@@ -883,34 +874,30 @@ async function buildMultiCountyNaloxoneMap(countyRows){
   allFips.forEach(function(fips){var cn=parseInt(fips.slice(2));var tracts=tractData?tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===cn;}):[];allTracts=allTracts.concat(tracts);});
   var lkp={};allTracts.forEach(function(t){var id=String(parseInt(t.TRACT_FIPS||0)).padStart(6,"0");lkp[id]=t;lkp[String(parseInt(t.TRACT_FIPS||0))]=t;});
   var breaks=getNaloxoneBreaks();
-  var w=mkMapWrapper(mid,"Naloxone Kit Need by Tract — "+names+" (statewide 5-shade quantile)",NALOX_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",names+"_Naloxone_Tract_Map");
+  var w=mkMapWrapper(mid,"Naloxone Kit Need by Census Tract — "+names+" (Statewide 5-Shade Quantile)",NALOX_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",names+"_Naloxone_Tract_Map");
   w._init=async function(){
     try{
       var allFeatures=[];
       for(var i=0;i<allFips.length;i++){var fips=allFips[i];var geo=await fetchTractGeo(fips.slice(0,2),parseInt(fips.slice(2)));if(geo&&geo.features)allFeatures=allFeatures.concat(geo.features);}
       if(!allFeatures.length)return;
-      var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);
-      var hatch=addHatch(map);
+      var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);
       L.geoJSON({type:"FeatureCollection",features:allFeatures},{
         style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:naloxoneShadeColor(t.est_kits_needed_annual_high,breaks),weight:1,color:"#fff",fillOpacity:.85};},
-        onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Kits/yr (high): "+fmt(t.est_kits_needed_annual_high,"")+"<br/>Kits/yr (median): "+fmt(t.est_kits_needed_annual_median,"")+"<br/>Naloxone gap: "+fmt(t.naloxone_gap,"gap")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}
+        onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=lkp[pad]||lkp[raw];if(t)lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Kits/yr (high): "+fmt(t.est_kits_needed_annual_high,"")+"<br/>Kits/yr (median): "+fmt(t.est_kits_needed_annual_median,"")+"<br/>Gap: "+fmt(t.naloxone_gap,"gap")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}
       }).addTo(map);
       map.fitBounds(L.geoJSON({type:"FeatureCollection",features:allFeatures}).getBounds(),{padding:[10,10]});
       bindMapDownload(w,map,names+"_Naloxone_Tract_Map");
     }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
-  };
-  return w;
+  };return w;
 }
 
-// Hospital transport z-score map (on-demand)
 async function buildHospitalTransportMap(fips,cname){
   var sn=fips.slice(0,2),cn=parseInt(fips.slice(2)),tl=buildTractLookup(fips);
   if(!tl.tracts.length)return null;
-  // Use precomputed mean/SD
   var mean=tractHospMean||0,sd=tractHospSD||1;
   var mid="map-"+(++mapCnt);
   var legend=[["≥+2 SD (deep blue)","#08519c"],["≥+1 SD","#3182bd"],["0 to +1 SD (above mean)","#9ecae1"],["0 to -1 SD (below mean)","#fc8d59"],["≤-1 SD","#d7301f"],["≤-2 SD (deep red)","#7f0000"],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]];
-  var w=mkMapWrapper(mid,"Hospital Transport Rate (Z-Score) — "+cname+" County",legend,"Source: ODMAP 2020-2025 | Kansas ORS — Blue = above state mean, Red = below state mean",cname+"_HospTransport_ZScore_Map");
+  var w=mkMapWrapper(mid,"Hospital Transport Rate Z-Score by Tract — "+cname+" County (ODMAP 2020–2025)",legend,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS — Blue = above state mean, Red = below state mean",cname+"_HospTransport_ZScore_Map");
   w._init=async function(){
     try{var geo=await fetchTractGeo(sn,cn);if(!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(!t)return{fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};if(t.suppress_small_total===1||t.hospital_rate===null||t.hospital_rate===undefined)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:zscoreColor(t.hospital_rate,mean,sd),weight:1,color:"#fff",fillOpacity:.85};},onEachFeature:function(f,lyr){var raw=String(parseInt(f.properties.TRACT)),pad=raw.padStart(6,"0"),t=tl.lkp[pad]||tl.lkp[raw];if(t&&t.hospital_rate!==null&&t.hospital_rate!==undefined){var z=((t.hospital_rate-mean)/sd).toFixed(2);lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Hospital Transport: "+fmt(t.hospital_rate,"hospital_rate")+"<br/>Z-Score: "+z+"<br/>State Mean: "+fmt(mean,"hospital_rate")+"<br/>"+(t.suppress_small_total===1?"<em>Suppressed</em>":""));}else if(t){lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/><em>No transport data</em>");}}}).addTo(map);map.fitBounds(L.geoJSON(geo).getBounds(),{padding:[10,10]});bindMapDownload(w,map,cname+"_HospTransport_ZScore_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
   };return w;
@@ -918,9 +905,9 @@ async function buildHospitalTransportMap(fips,cname){
 
 async function buildTroopEcoMap(troopLetter){
   var mid="map-"+(++mapCnt),troop=KHP[troopLetter],troopFips=new Set(troop.c);
-  var w=mkMapWrapper(mid,"Drug Ecosystem — KHP "+troop.name,ECO_LEGEND,"Source: ODMAP 2020-2025 | Kansas ORS",troop.name.replace(/[^a-zA-Z0-9]/g,"_")+"_Eco_Map","county-map");
+  var w=mkMapWrapper(mid,"Drug Ecosystem by County — KHP "+troop.name+" (ODMAP 2020–2025)",ECO_LEGEND,"Source: ODMAP 2020–2025 (Kansas Board of EMS) | Kansas ORS",troop.name.replace(/[^a-zA-Z0-9]/g,"_")+"_Eco_Map","county-map");
   w._init=async function(){
-    try{var geo=await fetchCountyGeo();if(!geo||!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map,8);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!troopFips.has(fips))return{fillColor:"#E7E9EC",weight:1,color:"#bbb",fillOpacity:.5};if(!r||r.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ecoColor(r.ecosystem_type),weight:2,color:"#325379",fillOpacity:.85};},onEachFeature:function(f,lyr){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!troopFips.has(fips))return;if(r)lyr.bindPopup("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>Ecosystem: "+(r.ecosystem_type||"--")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>Rate/1k: "+fmt(r.rate_total_per1k,"per1k"));}}).addTo(map);var tg={type:"FeatureCollection",features:geo.features.filter(function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");return troopFips.has(fips);})};if(tg.features.length)map.fitBounds(L.geoJSON(tg).getBounds(),{padding:[20,20]});}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
+    try{var geo=await fetchCountyGeo();if(!geo||!geo.features||!geo.features.length)return;var map=L.map(mid,{zoomControl:true,attributionControl:false});mkTiles(map,8);var hatch=addHatch(map);L.geoJSON(geo,{style:function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!troopFips.has(fips))return{fillColor:"#E7E9EC",weight:1,color:"#bbb",fillOpacity:.5};if(!r||r.suppress_small_total===1)return{fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};return{fillColor:ecoColor(r.ecosystem_type),weight:2,color:"#325379",fillOpacity:.85};},onEachFeature:function(f,lyr){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");var r=countyData.find(function(x){return padFIPS(x.FIPS)===fips;});if(!troopFips.has(fips))return;if(r)lyr.bindPopup("<strong>"+cleanName(r.NAME||f.properties.NAME)+" County</strong><br/>Ecosystem: "+(r.ecosystem_type||"--")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>EMS Rate/1k (2020–2025): "+fmt(r.rate_total_per1k,"per1k"));}}).addTo(map);var tg={type:"FeatureCollection",features:geo.features.filter(function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");return troopFips.has(fips);})};if(tg.features.length)map.fitBounds(L.geoJSON(tg).getBounds(),{padding:[20,20]});bindMapDownload(w,map,troopLetter+"_Troop_Eco_Map");}catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
   };return w;
 }
 
@@ -936,24 +923,17 @@ function genCharts(rows,topic,peers,aiTags,text){
   else if(topic==="ed"){charts.push(edAgeChart(rows));charts.push(edRaceChart(rows));}
   else if(topic==="demographics"){if(!isMulti)charts.push(demoChart(r));}
   else if(topic==="core"){
-    if(isMulti){
-      // Multi-county core: comparison bars instead of trend+donut
-      multiCompareChart(rows).forEach(function(c){charts.push(c);});
-    } else {
-      charts.push(trendChart(rows,null));charts.push(drugDonut(r));
-    }
+    if(isMulti){multiCompareChart(rows).forEach(function(c){charts.push(c);});}
+    else{charts.push(trendChart(rows,null));charts.push(drugDonut(r));}
   }
-  // Conditional
   if(aiTags.indexOf("ed_age")>=0) charts.push(edAgeChart(rows));
   if(aiTags.indexOf("ed_race")>=0) charts.push(edRaceChart(rows));
   if(aiTags.indexOf("suicide_counts")>=0||shouldShowSuicide(r,text||"")){var sc=suicideCountChart(rows);if(sc)charts.push(sc);}
   if(aiTags.indexOf("suicide_pct")>=0||shouldShowSuicide(r,text||"")){var sp=suicidePctChart(rows);if(sp)charts.push(sp);}
   if(aiTags.indexOf("repeat_visit")>=0||shouldShowRepeatVisit(r,text||"")){var rv=repeatVisitChart(rows);if(rv)charts.push(rv);}
-  // FIX: ed_disposition only for single-county, not multi
   if(aiTags.indexOf("ed_disposition")>=0&&!isMulti){var ed=edDispositionChart(rows);if(ed)charts.push(ed);}
   if(["ed","core"].indexOf(topic)>=0&&!isMulti){var dxt=buildDxTable(r);if(dxt)dxt.forEach(function(t){charts.push(t);});}
   if(["drugs","polysubstance","core"].indexOf(topic)>=0&&!isMulti){var ct=buildComboTable(r);if(ct)charts.push(ct);}
-  // Deduplicate
   var seen=new Set(),out=[];charts.filter(Boolean).forEach(function(c){if(!seen.has(c)){seen.add(c);out.push(c);}});
   return out;
 }
@@ -963,14 +943,11 @@ function renderMetrics(row,fields){
   var cards=fields.map(function(f){var v=row[f];if(v===null||v===undefined)return "";var a=stateAvgs[f],isN=typeof v==="number";var hi=isN&&a!==undefined&&v>a*1.1,lo=isN&&a!==undefined&&v<a*0.9;var cmp=isN&&a!==undefined?"KS avg: "+fmt(a,f):"";return'<div class="metric-card"><div class="lbl">'+f.replace(/_/g," ")+'</div><div class="val '+(hi?"high":lo?"low":"")+'">'+fmt(v,f)+(hi?" &#9650;":lo?" &#9660;":"")+'</div>'+(cmp?'<div class="cmp">'+cmp+'</div>':'')+' </div>';}).join("");
   return'<div class="metric-grid">'+cards+'</div>';
 }
-
-// FIX: Multi-county metric strip — key combined + per-county
 function renderMultiMetrics(rows){
   var html='<div class="multi-metric-section">';
   var keyFields=["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","est_kits_needed_annual_high"];
   rows.forEach(function(r){
-    html+='<div class="multi-metric-header">'+cleanName(r.NAME)+" County</div>";
-    html+='<div class="metric-grid">';
+    html+='<div class="multi-metric-header">'+cleanName(r.NAME)+" County</div><div class=\"metric-grid\">";
     keyFields.forEach(function(f){
       var v=r[f];if(v===null||v===undefined)return;
       var a=stateAvgs[f],isN=typeof v==="number";
@@ -980,11 +957,9 @@ function renderMultiMetrics(rows){
     });
     html+='</div>';
   });
-  html+='</div>';
-  return html;
+  return html+'</div>';
 }
 
-// Show tiles for: core, network, and multi-county general queries
 var SHOW_TILES_TOPICS=new Set(["core","network"]);
 
 function addMsg(role,html,tag){
@@ -995,7 +970,6 @@ function addMsg(role,html,tag){
 }
 function addTyping(){var chat=document.getElementById("chat"),div=document.createElement("div");div.className="msg koda";div.id="typing-indicator";div.innerHTML='<div class="avatar">K</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';chat.appendChild(div);chat.scrollTop=chat.scrollHeight;}
 function rmTyping(){var t=document.getElementById("typing-indicator");if(t)t.remove();}
-
 function addChips(chips,force){
   if(chatStarted&&!force)return;
   var chat=document.getElementById("chat"),div=document.createElement("div"),gid=++chipGrp;div.className="msg koda";
@@ -1040,36 +1014,58 @@ async function handleSend(){
   var troopL=detectTroop(text);
   var isTroopRequest=/\btroop\b|\bkhp\b|\bhighway patrol\b/.test(text.toLowerCase());
 
-  // Context-aware: if no explicit troop letter but we have a session troop,
-  // and the message is a follow-up question (no county detected, troop-related or general),
-  // resolve using session troop
   var isFollowUp=!locs.length&&!troopL;
   if(isFollowUp&&sessionTroop){
-    // If the question is clearly about a county-level topic without geography,
-    // treat it as a troop follow-up
-    var troopFollowUpPatterns=/naloxone|narcan|kit|burden|highest|ecosystem|drug|trend|ed |emergency|visit|death|fatal|spike|which county|what county/i;
+    var troopFollowUpPatterns=/naloxone|narcan|kit|burden|highest|ecosystem|drug|trend|\bed\b|emergency|visit|death|fatal|spike|which county|what county/i;
     if(troopFollowUpPatterns.test(text)) troopL=sessionTroop;
   }
-  // Statewide highest burden: no session context → find top county statewide
-  var isStatewideQuery=/which county|what county/.test(text.toLowerCase())&&!sessionTroop&&!locs.length;
   addTyping();
 
   try{
-    if(!sessionFIPS&&!isTroopRequest){
-      var r=await callAI("User said: \""+text+"\". No Kansas county mentioned. Ask which county or city they work in. KODA. Direct, 1-2 sentences.");
-      rmTyping();addMsg("koda",fmtResponse(r));
+    if(!sessionFIPS&&!isTroopRequest&&!troopL){
+      var r0=await callAI("User said: \""+text+"\". No Kansas county mentioned. Ask which county or city they work in. You are KODA. Be direct, 1-2 sentences.");
+      rmTyping();addMsg("koda",fmtResponse(r0));
     }
-    else if(isTroopRequest){
+    else if(isTroopRequest||troopL){
       if(!troopL){
-        rmTyping();var bubble=addMsg("koda","<p>Here's an overview of overdose activity across all KHP Troop areas (2020–2025). Select a troop below for a full breakdown including county rates, naloxone needs, ED age patterns, and ecosystem map.</p>","Statewide KHP Overview");
+        rmTyping();var bubble=addMsg("koda","<p>Here's an overview of overdose activity across all KHP Troop areas (2020–2025). Select a troop below for a full breakdown.</p>","Statewide KHP Overview");
         if(bubble){bubble.appendChild(troopEMSChart());bubble.appendChild(troopEDChart());}
         addSuggestions(["Troop A - Olathe (KC Metro)","Troop B - Topeka (NE Kansas)","Troop C - Salina (N Central)","Troop D - Hays (NW Kansas)","Troop E - Garden City (SW Kansas)","Troop F - Wichita (S Central)","Troop H - Chanute (SE Kansas)"]);
       } else {
-        var ts=buildTroopSummary(troopL);
-        var ta=await callAI("You are KODA.\n\nKHP "+KHP[troopL].name+":\n"+ts+"\n\nSummarize: highest burden counties (with numbers), ecosystem types, YoY trends, ED vs EMS, suppressed counties. State total EMS, ED, naloxone kits. Worth noting: insight. Skip pleasantries.");
-        rmTyping();var parsed=parseAITags(ta);var b2=addMsg("koda",fmtResponse(parsed.text),"KHP "+KHP[troopL].name);
-        if(b2){b2.appendChild(troopRateChart(troopL));b2.appendChild(troopNaloxoneChart(troopL));var teac=troopEDAgeChart(troopL);if(teac)b2.appendChild(teac);var tsc=troopSuicideChart(troopL);if(tsc)b2.appendChild(tsc);var em=await buildTroopEcoMap(troopL);if(em){b2.appendChild(em);setTimeout(function(){em._init();},100);}}
-        addSuggestions(["Which county in this troop has the highest burden?","Tell me about naloxone needs in this troop","Which counties are trending up?"]);
+        sessionTroop=troopL;
+        var troop=KHP[troopL];
+        var troopRows=troop.c.map(function(f){return countyData.find(function(r){return padFIPS(r.FIPS)===f&&r.suppress_small_total!==1;});}).filter(Boolean);
+        var wantsNaloxone=/naloxone|narcan|kit/.test(text.toLowerCase());
+        var wantsBurden=/\b(burden|highest)\b/.test(text.toLowerCase())&&!wantsNaloxone;
+
+        if(wantsNaloxone){
+          var naloxRows=troopRows.slice().sort(function(a,b){return sv(b.est_kits_needed_annual_high)-sv(a.est_kits_needed_annual_high);});
+          var naloxSummary=troop.name+" NALOXONE NEEDS:\n"+naloxRows.map(function(r){return cleanName(r.NAME)+": high est="+fmt(r.est_kits_needed_annual_high,"")+" kits/yr, median="+fmt(r.est_kits_needed_annual_median,"")+" kits/yr, gap="+fmt(r.naloxone_gap,"gap")+", expected opioid ODs/yr="+fmt(r.expected_opioid_ods_annual,"");}).join("\n")+"\nTotal (high): "+naloxRows.reduce(function(a,r){return a+sv(r.est_kits_needed_annual_high);},0).toLocaleString()+" kits/year";
+          var na=await callAI("You are KODA.\n\n"+naloxSummary+"\n\nSummarize naloxone needs for this troop: which counties have highest need, compare to KS average ("+fmt(stateAvgs.est_kits_needed_annual_high,"")+" high estimate avg), note any gaps. State troop total. Worth noting: insight. 2-3 paragraphs. State all data covers 2020–2025.");
+          rmTyping();var np=parseAITags(na);var nb=addMsg("koda",fmtResponse(np.text),"KHP "+troop.name+" — Naloxone Needs");
+          if(nb){
+            nb.appendChild(troopNaloxoneChart(troopL));
+            var tnm=await buildMultiCountyNaloxoneMap(troopRows);
+            if(tnm){nb.appendChild(tnm);setTimeout(function(){tnm._init();},150);}
+          }
+          addSuggestions(["Which county in this troop has the highest burden?","Show me the ecosystem map for this troop","Which counties in this troop are trending up?"]);
+        } else if(wantsBurden){
+          var sortedByBurden=troopRows.slice().sort(function(a,b){return sv(b.rate_total_per1k)-sv(a.rate_total_per1k);});
+          var topRow=sortedByBurden[0];
+          var burdenSummary="HIGHEST BURDEN COUNTY IN "+troop.name+" (EMS data 2020–2025):\n"+cleanName(topRow.NAME)+" County\nRate/1k: "+fmt(topRow.rate_total_per1k,"per1k")+" (KS avg: "+fmt(stateAvgs.rate_total_per1k,"per1k")+")\nBurden tier: "+(topRow.burden_tier||"--")+"\nEcosystem: "+(topRow.ecosystem_type||"--")+"\nTrend: "+(topRow.odmap_trend_flag||"--")+"\nEMS incidents (2020–2025): "+fmt(topRow.incidents_total,"")+"\nED visits (2020–2025): "+fmt(topRow.visits_6yr,"")+"\nNaloxone kits needed (high, annual): "+fmt(topRow.est_kits_needed_annual_high,"")+"\nFatal ODs (2018–2025): "+fmt(topRow.F2018_2025_all_fatal,"")+"\nYoY 2025: "+fmt(topRow.odmap_yoy_pct_change_2025,"yoy_pct")+"\n\nFULL TROOP RANKING BY RATE/1K:\n"+sortedByBurden.map(function(r,i){return(i+1)+". "+cleanName(r.NAME)+": "+fmt(r.rate_total_per1k,"per1k")+"/1k, "+(r.burden_tier||"--");}).join("\n");
+          var ba=await callAI("You are KODA.\n\n"+burdenSummary+"\n\nIdentify the highest burden county with specific numbers, explain why, compare to KS average, note next 1-2 counties. Worth noting: insight. 2-3 paragraphs. State time periods for all data cited.");
+          rmTyping();var bp=parseAITags(ba);
+          sessionFIPS=padFIPS(topRow.FIPS);sessionCountyName=cleanName(topRow.NAME);
+          var bb=addMsg("koda",fmtResponse(bp.text),"KHP "+troop.name+" — Highest Burden");
+          if(bb) bb.appendChild(troopRateChart(troopL));
+          addSuggestions(["Tell me more about "+cleanName(topRow.NAME)+" County","Show me a tract map for "+cleanName(topRow.NAME)+" County","What are the naloxone needs in this troop?"]);
+        } else {
+          var ts=buildTroopSummary(troopL);
+          var ta=await callAI("You are KODA.\n\nKHP "+troop.name+":\n"+ts+"\n\nSummarize: highest burden counties (with numbers and 2020–2025 time period), ecosystem types, YoY trends, ED vs EMS comparison, suppressed counties. State total EMS incidents, ED visits, naloxone kits needed. Worth noting: insight. Skip pleasantries. State time periods for all data cited.");
+          rmTyping();var parsed=parseAITags(ta);var b2=addMsg("koda",fmtResponse(parsed.text),"KHP "+troop.name);
+          if(b2){b2.appendChild(troopRateChart(troopL));b2.appendChild(troopNaloxoneChart(troopL));var teac=troopEDAgeChart(troopL);if(teac)b2.appendChild(teac);var tsc=troopSuicideChart(troopL);if(tsc)b2.appendChild(tsc);var em=await buildTroopEcoMap(troopL);if(em){b2.appendChild(em);setTimeout(function(){em._init();},100);}}
+          addSuggestions(["Which county in this troop has the highest burden?","Tell me about naloxone needs in this troop","Which counties are trending up?"]);
+        }
       }
     }
     else{
@@ -1085,28 +1081,21 @@ async function handleSend(){
         var extra=null,tractMap=null,ebMap=null,ecoMap=null,naloxMap=null,hospMap=null;
         var multiChoroMap=null,multiTractMap=null;
         var shownTractMap=false,shownEcoMap=false;
-
-        // Check if user is asking for hospital transport map
         var wantsHospMap=/hospital.*transport|transport.*map|z.?score.*transport|transport.*z.?score/.test(text.toLowerCase());
 
         if(isMulti){
           var selectedFipsArr=rows.map(function(r){return padFIPS(r.FIPS);});
           multiChoroMap=await buildMultiCountyChoropleth(selectedFipsArr,rows,topic);
           var contiguous=areAllContiguous(selectedFipsArr);
-          // For ecosystem/network queries, always offer tract eco map if contiguous
           var wantsTractMap=topic==="tract"||/map|tract|neighborhood|where/.test(text.toLowerCase());
           var wantsEco=topic==="network"||topic==="drugs"||/ecosystem/.test(text.toLowerCase());
-          if(contiguous&&(wantsTractMap||wantsEco)){
-            multiTractMap=await buildMultiCountyTractMap(rows,wantsEco);
-            shownTractMap=true;shownEcoMap=wantsEco;
-          }
+          if(contiguous&&(wantsTractMap||wantsEco)){multiTractMap=await buildMultiCountyTractMap(rows,wantsEco);shownTractMap=true;shownEcoMap=wantsEco;}
         } else {
           if(wantsHospMap){hospMap=await buildHospitalTransportMap(sessionFIPS,cleanName(rows[0].NAME));}
           else if(topic==="tract"){extra=buildTractSummary(sessionFIPS);tractMap=await buildTractMap(sessionFIPS,cleanName(rows[0].NAME));ebMap=await buildEBRateMap(sessionFIPS,cleanName(rows[0].NAME));shownTractMap=true;}
           else if(topic==="naloxone"){naloxMap=await buildNaloxoneMap(sessionFIPS,cleanName(rows[0].NAME));}
           else if(topic==="drugs"||topic==="network"||topic==="polysubstance"){ecoMap=await buildEcoMap(sessionFIPS,cleanName(rows[0].NAME));shownEcoMap=true;}
           else if(topic==="transport"){hospMap=await buildHospitalTransportMap(sessionFIPS,cleanName(rows[0].NAME));}
-          // Offer naloxone map for core queries too via suggestion
         }
 
         var sp=buildSysPrompt(rows,topic,extra,peers);
@@ -1115,12 +1104,8 @@ async function handleSend(){
         rmTyping();
 
         var html=fmtResponse(parsed.text);
-        // Tiles: core/network for single; multi-county always gets per-county strips
-        if(isMulti){
-          html+=renderMultiMetrics(rows);
-        } else if(SHOW_TILES_TOPICS.has(topic)){
-          html+=renderMetrics(rows[0],["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","SpikeEvents_2025","est_kits_needed_annual_high","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"]);
-        }
+        if(isMulti){html+=renderMultiMetrics(rows);}
+        else if(SHOW_TILES_TOPICS.has(topic)){html+=renderMetrics(rows[0],["rate_total_per1k","burden_tier","ecosystem_type","odmap_trend_flag","SpikeEvents_2025","est_kits_needed_annual_high","F2018_2025_all_fatal","crude_rate_all_fatal_per100k"]);}
         var bub=addMsg("koda",html,tag+(isMulti?" Counties":" County"));
 
         if(bub){
@@ -1141,10 +1126,8 @@ async function handleSend(){
 
         var suggestions=buildSuggestions(rows,topic,isMulti,shownTractMap,shownEcoMap);
         if(suggestions.length)addSuggestions(suggestions);
-
-        if(isMulti&&!areAllContiguous(rows.map(function(r){return padFIPS(r.FIPS);}))){
+        if(isMulti&&!areAllContiguous(rows.map(function(r){return padFIPS(r.FIPS);})))
           addSuggestions(["Show me a tract map for "+cleanName(rows[0].NAME)+" County","Show me a tract map for "+cleanName(rows[rows.length-1].NAME)+" County"]);
-        }
       }
     }
   }catch(e){rmTyping();addMsg("koda","<p>Error: "+e.message+". Please try again.</p>");}
@@ -1154,7 +1137,6 @@ async function handleSend(){
 document.getElementById("send-btn").addEventListener("click",handleSend);
 document.getElementById("user-input").addEventListener("keydown",function(e){if(e.key==="Enter")handleSend();});
 
-// ── Init ───────────────────────────────────────────────────────────────────
 async function init(){
   try{
     var setMsg=function(m){var el=document.querySelector("#loading-screen .load-msg");if(el)el.textContent=m;};
@@ -1169,16 +1151,14 @@ async function init(){
     var r2=await fetch(TRACT_CSV);if(!r2.ok)throw new Error("Tract CSV error ("+r2.status+")");
     setMsg("Parsing tract data...");
     tractData=parseCSV(await r2.text());
-    // Precompute hospital transport z-score stats from all non-suppressed tracts
     var hospVals=tractData.filter(function(r){return r.hospital_rate!==null&&r.hospital_rate!==undefined&&r.suppress_small_total!==1;}).map(function(r){return r.hospital_rate;});
     if(hospVals.length){
       tractHospMean=hospVals.reduce(function(a,b){return a+b;},0)/hospVals.length;
       var variance=hospVals.reduce(function(acc,v){return acc+Math.pow(v-tractHospMean,2);},0)/hospVals.length;
       tractHospSD=Math.sqrt(variance)||1;
     }
-    stateAvgs=calcAvgs(countyData);
     document.getElementById("loading-screen").style.display="none";
-    addMsg("koda","<p>Hi, I'm <strong>KODA</strong> — the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p><p>I have county-level and census tract-level overdose surveillance data for all of Kansas — EMS incidents (2020–2025), emergency department visits with diagnosis codes and mental health indicators, fatal overdoses (2018–2025), naloxone distribution, drug ecosystem classifications, spike events, hospital transport rates, and more.</p><p>Tell me which county or city you're working in and what you'd like to know.</p>");
+    addMsg("koda","<p>Hi, I'm <strong>KODA</strong> — the Kansas Overdose Data Assistant, built by the CDC Foundation's Overdose Response Strategy program.</p><p>I have county-level and census tract-level overdose surveillance data for all of Kansas — EMS suspected overdose incidents (ODMAP 2020–2025), emergency department visits (ESSENCE 2020–2025), fatal overdoses (CDC WONDER 2018–2025), naloxone distribution, drug ecosystem classifications, spike events, hospital transport rates, and more.</p><p>Tell me which county or city you're working in and what you'd like to know.</p>");
     addChips(["Give me an overview of Reno County","Tell me about stimulant trends in Sedgwick County","What is Wyandotte County's drug ecosystem?","Break down overdoses by KHP Troop area","Where is burden highest within Sedgwick County?","Compare Reno, Harvey, and Sedgwick Counties"],true);
   }catch(e){var ls=document.getElementById("loading-screen");if(ls)ls.innerHTML='<div class="logo"><span>&#9654;</span>KODA</div><div class="load-msg" style="color:#f87171;text-align:center;padding:0 24px">Error: '+e.message+'<br><br>Please refresh.</div>';}
 }
