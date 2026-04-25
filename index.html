@@ -44,6 +44,12 @@ header{background:#325379;color:white;padding:14px 24px;display:flex;align-items
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
 .chip{padding:6px 14px;border-radius:20px;border:1px solid #76ACC1;background:white;font-size:12px;color:#325379;cursor:pointer;transition:all .15s}
 .chip:hover{background:#325379;color:white;border-color:#325379}
+/* ── Suggestion bubble ── */
+.suggestion-bubble{background:#F0F6F8;border:1px dashed #76ACC1;border-radius:12px;padding:10px 14px;margin-top:10px;font-size:13px;color:#325379;line-height:1.6}
+.suggestion-bubble .sug-label{font-size:10px;font-weight:700;color:#76ACC1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.suggestion-bubble .sug-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sug-link{padding:4px 11px;border-radius:14px;border:1px solid #488286;background:white;font-size:12px;color:#488286;cursor:pointer;transition:all .15s}
+.sug-link:hover{background:#488286;color:white}
 #input-area{padding:16px 24px;background:white;border-top:2px solid #BFCDDF;flex-shrink:0}
 #input-row{display:flex;gap:10px;max-width:860px;margin:0 auto}
 #user-input{flex:1;padding:12px 16px;border:1px solid #BFCDDF;border-radius:24px;font-size:14px;outline:none;font-family:Arial,sans-serif;color:#232D2E}
@@ -119,7 +125,6 @@ var ORS = {
 };
 var CC = [ORS.blue,ORS.teal,ORS.teal2,ORS.purple,ORS.gold,ORS.orange,ORS.lav,ORS.gray];
 
-// Ecosystem colors
 var ECO_COLORS = {
   "high burden opioid":    ORS.dkred,
   "high burden stimulant": ORS.blue,
@@ -151,6 +156,86 @@ var KHP = {
 };
 var F2T={};
 Object.keys(KHP).forEach(function(l){KHP[l].c.forEach(function(f){F2T[f]=l;});});
+
+// ── County adjacency table ─────────────────────────────────────────────────
+var ADJ={
+  "20001":["20031","20049","20099","20133","20205"],"20003":["20059","20107","20121","20139","20205","20207"],
+  "20005":["20087","20131","20043","20013"],"20007":["20025","20033","20077","20095","20151"],
+  "20009":["20057","20069","20083","20111","20113","20145","20151","20155","20159","20165"],
+  "20011":["20001","20049","20099","20107"],"20013":["20005","20043","20085","20131","20157"],
+  "20015":["20035","20079","20095","20159","20173","20191"],"20017":["20027","20073","20111","20127","20169"],
+  "20019":["20049","20073","20125","20205","20207"],"20021":["20037","20099","20125"],"20023":["20065","20109","20181","20199"],
+  "20025":["20007","20033","20097","20129","20189"],"20027":["20017","20041","20089","20123","20143","20157","20169"],
+  "20029":["20089","20123","20143","20157","20161","20169","20201"],"20031":["20001","20049","20107","20139","20205"],
+  "20033":["20007","20025","20081","20097","20119","20189"],"20035":["20015","20077","20079","20095","20191"],
+  "20037":["20021","20099","20125"],"20039":["20065","20109","20137","20153","20183","20195"],
+  "20041":["20027","20053","20123","20127","20169"],"20043":["20005","20013","20085","20087","20131"],
+  "20045":["20059","20087","20103","20107","20139","20149"],"20047":["20057","20083","20097","20145","20165","20185"],
+  "20049":["20001","20011","20019","20031","20073","20099","20107","20125","20133","20205"],
+  "20051":["20053","20063","20167","20193","20195"],"20053":["20041","20051","20113","20127","20169"],
+  "20055":["20057","20067","20071","20093","20101","20119"],"20057":["20009","20047","20055","20069","20083","20097","20135","20145"],
+  "20059":["20003","20045","20103","20107","20121","20139"],"20061":["20027","20041","20149","20157","20161","20197"],
+  "20063":["20051","20065","20109","20167","20193"],"20065":["20023","20039","20063","20109","20137","20153"],
+  "20067":["20055","20081","20093","20119","20129","20175","20187","20189"],"20069":["20007","20025","20055","20057","20071","20083","20097","20119","20129","20135"],
+  "20071":["20023","20055","20063","20069","20101","20109","20203"],"20073":["20017","20019","20049","20099","20111","20125","20205"],
+  "20075":["20067","20071","20093","20101","20109","20203"],"20077":["20007","20035","20095","20151","20185","20191"],
+  "20079":["20015","20035","20095","20113","20155","20159","20173"],"20081":["20033","20067","20119","20175","20189"],
+  "20083":["20009","20047","20057","20069","20097","20135","20145","20165"],"20085":["20013","20043","20087","20131","20139","20149","20177"],
+  "20087":["20005","20043","20045","20085","20103","20149"],"20089":["20027","20029","20123","20157","20183"],
+  "20091":["20045","20103","20121","20149"],"20093":["20055","20067","20075","20101","20171","20203"],
+  "20095":["20007","20015","20035","20077","20079","20151","20173","20185","20191"],"20097":["20007","20025","20033","20047","20057","20069","20083","20119","20135"],
+  "20099":["20001","20011","20021","20037","20049","20073","20125"],"20101":["20055","20071","20075","20093","20109","20171","20203"],
+  "20103":["20045","20059","20087","20091","20107","20121","20149"],"20105":["20027","20089","20123","20143","20157","20167","20169"],
+  "20107":["20003","20011","20031","20045","20049","20059","20103","20121","20139"],"20109":["20023","20063","20065","20071","20075","20101","20137","20167","20193","20199","20203"],
+  "20111":["20009","20017","20073","20113","20155","20159"],"20113":["20009","20041","20053","20079","20111","20127","20155","20159","20169"],
+  "20115":["20017","20041","20073","20113","20127","20155","20169"],"20117":["20027","20029","20123","20131","20149","20157","20197","20201"],
+  "20119":["20025","20033","20055","20067","20069","20081","20097","20129","20189"],"20121":["20003","20059","20091","20103","20107","20139"],
+  "20123":["20027","20029","20041","20089","20105","20117","20127","20157","20169","20201"],"20125":["20011","20019","20021","20037","20049","20073","20099","20133","20205"],
+  "20127":["20017","20041","20053","20061","20113","20115","20123","20169"],"20129":["20025","20033","20067","20069","20119","20175","20187","20189"],
+  "20131":["20005","20013","20043","20085","20117","20149","20177","20197","20201"],"20133":["20001","20049","20073","20125","20205"],
+  "20135":["20047","20057","20069","20083","20097","20145","20165"],"20137":["20039","20065","20109","20147","20153","20163","20167","20183","20195"],
+  "20139":["20003","20031","20045","20059","20085","20107","20121","20131","20177"],"20141":["20029","20089","20105","20123","20143","20157","20163","20167","20183"],
+  "20143":["20027","20029","20105","20123","20141","20157","20167","20169"],"20145":["20009","20047","20057","20083","20135","20165","20185"],
+  "20147":["20029","20105","20123","20137","20141","20157","20163","20167","20183","20201"],"20149":["20045","20085","20087","20091","20103","20117","20131","20197"],
+  "20151":["20007","20077","20095","20155","20185"],"20153":["20039","20065","20137","20163","20195"],
+  "20155":["20009","20079","20111","20113","20115","20151"],"20157":["20027","20029","20061","20089","20105","20117","20123","20141","20143","20147","20167","20201"],
+  "20159":["20009","20079","20111","20113","20115","20155","20169"],"20161":["20027","20029","20041","20053","20061","20149","20169","20197"],
+  "20163":["20137","20141","20147","20153","20167","20183","20195"],"20165":["20009","20047","20083","20135","20145","20185"],
+  "20167":["20039","20051","20063","20105","20109","20137","20141","20143","20147","20153","20157","20163"],
+  "20169":["20017","20027","20029","20041","20053","20105","20113","20115","20123","20127","20143","20155","20159","20161"],
+  "20171":["20055","20075","20093","20101","20175","20187","20203"],"20173":["20015","20035","20079","20095","20113","20115","20155","20159","20191"],
+  "20175":["20033","20067","20081","20129","20171","20187","20189"],"20177":["20085","20131","20139","20149","20197"],
+  "20179":["20137","20163","20181","20183","20193","20195","20199"],"20181":["20023","20109","20179","20193","20199"],
+  "20183":["20039","20089","20105","20137","20141","20147","20153","20163","20167","20179"],"20185":["20009","20047","20077","20095","20145","20151","20165"],
+  "20187":["20025","20033","20067","20071","20075","20093","20101","20129","20171","20175","20189","20203"],"20189":["20025","20033","20067","20069","20081","20119","20129","20175","20187"],
+  "20191":["20015","20035","20077","20079","20095","20173"],"20193":["20039","20051","20063","20109","20137","20153","20163","20167","20179","20181","20195","20199"],
+  "20195":["20039","20051","20109","20137","20153","20163","20179","20193"],"20197":["20061","20085","20117","20131","20149","20161","20177"],
+  "20199":["20023","20109","20153","20163","20167","20179","20181","20193"],"20201":["20027","20029","20117","20123","20131","20147","20157"],
+  "20203":["20055","20071","20075","20093","20101","20109","20171","20187"],"20205":["20001","20019","20031","20049","20073","20125","20133"],
+  "20207":["20001","20003","20019","20049","20205"],"20209":["20091","20103"]
+};
+
+// ── Contiguity helpers ─────────────────────────────────────────────────────
+// Returns true if ALL selected FIPS are mutually contiguous (each adjacent to at least one other selected)
+function areAllContiguous(fipsArr) {
+  if (fipsArr.length <= 1) return true;
+  // BFS/union-find: check that the set forms a connected graph
+  var set = new Set(fipsArr);
+  var visited = new Set();
+  var queue = [fipsArr[0]];
+  visited.add(fipsArr[0]);
+  while (queue.length) {
+    var cur = queue.shift();
+    var neighbors = ADJ[cur] || [];
+    neighbors.forEach(function(n) {
+      if (set.has(n) && !visited.has(n)) {
+        visited.add(n);
+        queue.push(n);
+      }
+    });
+  }
+  return visited.size === fipsArr.length;
+}
 
 // ── County lookups ─────────────────────────────────────────────────────────
 var CF={
@@ -300,25 +385,21 @@ function ecoColor(eco){
   return "#E5EEF1";
 }
 
-// Hatch pattern SVG for suppressed areas
-function createHatchPattern(mapObj, id){
-  var svgNS="http://www.w3.org/2000/svg";
-  var svg=document.createElementNS(svgNS,"svg");
-  svg.setAttribute("xmlns",svgNS);
-  svg.setAttribute("width","10");svg.setAttribute("height","10");
-  svg.style.position="absolute";svg.style.top="-9999px";
-  var defs=document.createElementNS(svgNS,"defs");
-  var pat=document.createElementNS(svgNS,"pattern");
-  pat.setAttribute("id",id);pat.setAttribute("width","6");pat.setAttribute("height","6");
+function addHatch(map){
+  var svgEl=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svgEl.setAttribute("style","position:absolute;width:0;height:0");
+  var defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
+  var pat=document.createElementNS("http://www.w3.org/2000/svg","pattern");
+  pat.setAttribute("id","hatch-"+mapCnt);pat.setAttribute("width","6");pat.setAttribute("height","6");
   pat.setAttribute("patternUnits","userSpaceOnUse");pat.setAttribute("patternTransform","rotate(45)");
-  var rect=document.createElementNS(svgNS,"rect");
-  rect.setAttribute("width","6");rect.setAttribute("height","6");rect.setAttribute("fill","#d0d0d0");
-  var line=document.createElementNS(svgNS,"line");
-  line.setAttribute("x1","0");line.setAttribute("y","0");line.setAttribute("x2","0");line.setAttribute("y2","6");
-  line.setAttribute("stroke","#888");line.setAttribute("stroke-width","2");
-  pat.appendChild(rect);pat.appendChild(line);defs.appendChild(pat);svg.appendChild(defs);
-  document.body.appendChild(svg);
-  return "url(#"+id+")";
+  var rect=document.createElementNS("http://www.w3.org/2000/svg","rect");
+  rect.setAttribute("width","6");rect.setAttribute("height","6");rect.setAttribute("fill","#d5d5d5");
+  var line=document.createElementNS("http://www.w3.org/2000/svg","line");
+  line.setAttribute("x1","0");line.setAttribute("y1","0");line.setAttribute("x2","0");line.setAttribute("y2","6");
+  line.setAttribute("stroke","#888");line.setAttribute("stroke-width","2.5");
+  pat.appendChild(rect);pat.appendChild(line);defs.appendChild(pat);svgEl.appendChild(defs);
+  map.getContainer().appendChild(svgEl);
+  return "url(#hatch-"+mapCnt+")";
 }
 
 // ── Detection ──────────────────────────────────────────────────────────────
@@ -333,7 +414,6 @@ function detectLocs(text){
       if(lower.includes(city)) found.push({fips:CityF[city],countyName:FC[CityF[city]]});
     });
   }
-  // Deduplicate by fips
   var seen={},unique=[];
   found.forEach(function(f){if(!seen[f.fips]){seen[f.fips]=1;unique.push(f);}});
   return unique;
@@ -363,6 +443,70 @@ function detectTopic(t){
   return "core";
 }
 
+// ── Metric-by-topic for multi-county choropleth ────────────────────────────
+function getChoroMetric(topic){
+  if(topic==="naloxone")    return {field:"est_kits_needed_annual_median",label:"Kits/yr (median)"};
+  if(topic==="fatal")       return {field:"crude_rate_all_fatal_per100k",label:"Fatal OD Rate per 100k"};
+  if(topic==="drugs"||topic==="network"||topic==="polysubstance") return {field:"ecosystem_type",label:"Drug Ecosystem",categorical:true};
+  if(topic==="burden"||topic==="tract") return {field:"burden_tier",label:"Burden Tier",categorical:true};
+  // default: EB rate
+  return {field:"odmap_eb_rate_total_per1k",label:"EB Rate per 1,000"};
+}
+
+// ── Proactive suggestion builder ───────────────────────────────────────────
+function buildSuggestions(rows, topic, isMulti, shownTract, shownEco) {
+  var r = rows[0];
+  var sugs = [];
+
+  // Always-available follow-ups based on what wasn't shown
+  if (topic !== "tract" && !isMulti) {
+    sugs.push("Where is overdose burden highest within this county?");
+  }
+  if (topic !== "fatal") {
+    sugs.push("Tell me about fatal overdoses in " + (isMulti ? "these counties" : r.NAME + " County"));
+  }
+  if (topic !== "naloxone") {
+    sugs.push("What does the naloxone gap look like " + (isMulti ? "across these counties" : "in " + r.NAME + " County") + "?");
+  }
+
+  // Data-signal driven suggestions
+  if (!isMulti && r.pct_suicide_att_6yr && stateAvgs.pct_suicide_att_6yr &&
+      r.pct_suicide_att_6yr > stateAvgs.pct_suicide_att_6yr * 1.15 && topic !== "ed") {
+    sugs.unshift("What proportion of overdose ED visits involved a suicide attempt in " + r.NAME + " County?");
+  }
+  if (!isMulti && r.visits_12_17_6yr && sv(r.visits_12_17_6yr) > 10 && topic !== "demographics") {
+    sugs.unshift("Can you break down ED visits by age group for " + r.NAME + " County?");
+  }
+  if (!isMulti && r.frequent_3plus_6yr && stateAvgs.frequent_3plus_6yr &&
+      r.frequent_3plus_6yr > stateAvgs.frequent_3plus_6yr * 1.2 && topic !== "ed") {
+    sugs.unshift("How many " + r.NAME + " County patients had 3 or more ED visits? What does the repeat visit pattern look like?");
+  }
+  if (topic === "drugs" || topic === "core") {
+    if (!isMulti && !shownEco) {
+      sugs.unshift("Show me the drug ecosystem map for " + r.NAME + " County");
+    }
+  }
+  if (topic === "ed" || topic === "core") {
+    if (!isMulti) sugs.push("Break down ED visit race/ethnicity for " + r.NAME + " County");
+  }
+
+  // Multi-county tract offer
+  if (isMulti && rows.length >= 2) {
+    var fipsArr = rows.map(function(x){ return padFIPS(x.FIPS); });
+    if (areAllContiguous(fipsArr)) {
+      sugs.unshift("Show me a census tract map for " + rows.map(function(x){return x.NAME;}).join(", "));
+    }
+  }
+
+  // Deduplicate and cap at 3
+  var seen = {};
+  var out = [];
+  sugs.forEach(function(s){
+    if(!seen[s]){ seen[s]=1; out.push(s); }
+  });
+  return out.slice(0, 3);
+}
+
 // ── Peer matching ──────────────────────────────────────────────────────────
 function getPeers(fips,n){
   n=n||3;
@@ -381,21 +525,19 @@ function getPeers(fips,n){
   return scored.slice(0,n).map(function(s){return s.row;});
 }
 
-// ── Context signals for conditional charts ─────────────────────────────────
+// ── Context signals ────────────────────────────────────────────────────────
 function shouldShowSuicide(row, text){
   var t=text.toLowerCase();
   if(/suicide|mental health|behavioral|depression|anxiety|crisis|ideation/.test(t)) return true;
   if(row.pct_suicide_att_6yr && stateAvgs.pct_suicide_att_6yr && row.pct_suicide_att_6yr > stateAvgs.pct_suicide_att_6yr*1.2) return true;
   return false;
 }
-
 function shouldShowEDAge(row, text){
   var t=text.toLowerCase();
   if(/age|youth|teen|young|older|elder|senior|pediatric/.test(t)) return true;
   if(/ed |emergency|hospital|essence|visit|treatment|access/.test(t)) return true;
   return false;
 }
-
 function shouldShowRepeatVisit(row, text){
   var t=text.toLowerCase();
   if(/repeat|frequent|revolving|treatment gap|access|capacity/.test(t)) return true;
@@ -431,7 +573,6 @@ function buildComboBlock(row){
 }
 
 function buildDataSummary(rows, topic){
-  // rows is array (multi-county) or single row wrapped in array
   var isMulti = rows.length > 1;
   var skip={"TopCombo_1":1,"TopCombo_2":1,"TopCombo_3":1,"TopCombo_4":1,"TopCombo_5":1,"TopCombo_1_Incidents":1,"TopCombo_2_Incidents":1,"TopCombo_3_Incidents":1,"TopCombo_4_Incidents":1,"TopCombo_5_Incidents":1,"dx6yr_rank1":1,"dx6yr_rank2":1,"dx6yr_rank3":1,"dx6yr_rank4":1,"dx6yr_rank5":1,"dx6yr_rank1_n":1,"dx6yr_rank2_n":1,"dx6yr_rank3_n":1,"dx6yr_rank4_n":1,"dx6yr_rank5_n":1,"dx2425_rank1":1,"dx2425_rank2":1,"dx2425_rank3":1,"dx2425_rank4":1,"dx2425_rank5":1,"dx2425_rank1_n":1,"dx2425_rank2_n":1,"dx2425_rank3_n":1,"dx2425_rank4_n":1,"dx2425_rank5_n":1};
   var seen={},fields=[];
@@ -440,7 +581,6 @@ function buildDataSummary(rows, topic){
   var lines=[];
   if(isMulti){
     lines.push("COMBINED DATA FOR: "+rows.map(function(r){return r.NAME;}).join(", "));
-    // Numeric sum fields
     var sumFields=["incidents_total","opioid_incidents","polysub_incidents","Opioid","Methamphetamine","Benzodiazepine","Cocaine","Alcohol","visits_6yr","visits_2425","naloxone_opioid_total","est_kits_needed_annual_high","F2018_2025_all_fatal","suicide_attempt_6yr","suicidal_ideation_6yr"];
     sumFields.forEach(function(f){
       if(skip[f]) return;
@@ -504,7 +644,6 @@ function buildTroopSummary(l){
     if(r.suppress_small_total===1){suppressed.push(n);out+=n+" County: [SUPPRESSED]\n";return;}
     out+=n+" County: EMS Incidents="+fmt(r.incidents_total,"")+", Rate/1k="+fmt(r.rate_total_per1k,"per1k")+", ED Visits="+fmt(r.visits_6yr,"")+", Burden="+(r.burden_tier||"--")+", Ecosystem="+(r.ecosystem_type||"--")+", Trend="+(r.odmap_trend_flag||"--")+", Naloxone Kits Needed (high)="+fmt(r.est_kits_needed_annual_high,"")+", YoY 2025="+fmt(r.odmap_yoy_pct_change_2025,"yoy_pct")+"\n";
   });
-  // Totals
   var troopRows=t.c.map(function(f){return countyData.find(function(r){return padFIPS(r.FIPS)===f&&r.suppress_small_total!==1;});}).filter(Boolean);
   var totalEMS=troopRows.reduce(function(a,r){return a+sv(r.incidents_total);},0);
   var totalED=troopRows.reduce(function(a,r){return a+sv(r.visits_6yr);},0);
@@ -543,7 +682,7 @@ function buildSysPrompt(rows, topic, extra, peers){
     "- Always translate field names to plain English\n"+
     "- Suppressed = counts too small to report reliably\n"+
     "- When EMS and ED data both available, note both perspectives\n\n"+
-    "CHART TAGS -- include these in your response when relevant (they render charts automatically):\n"+
+    "CHART TAGS -- include these in your response when relevant:\n"+
     "[SHOW:suicide_counts] -- when suicide/mental health is notable or relevant to spending/intervention\n"+
     "[SHOW:suicide_pct] -- same trigger as above\n"+
     "[SHOW:ed_age] -- when age distribution of ED visits is relevant\n"+
@@ -604,7 +743,6 @@ function hbarChart(title,src,labels,data,colors){
   return w.div;
 }
 
-// Specific chart functions
 function trendChart(rows,peers){
   var yrs=["2020","2021","2022","2023","2024","2025"];
   var isMulti=rows.length>1;
@@ -736,11 +874,7 @@ function demoChart(row){
   return hbarChart("Fatal OD Demographics (2018-2025) -- "+row.NAME+" County",DS.demographics,lbls,vals,CC);
 }
 
-function rateCompareChart(rows,peers){
-  return naloxoneChart(rows,peers);
-}
-
-// Troop overview charts (statewide)
+// Troop charts
 function troopEMSChart(){
   var labels=Object.keys(KHP).map(function(l){return "Troop "+l;});
   var vals=Object.keys(KHP).map(function(l){
@@ -775,9 +909,7 @@ function troopRateChart(l){
   var lbls=rows.map(function(r){return r.NAME;});
   var vals=rows.map(function(r){return sv(r.rate_total_per1k);});
   var colors=vals.map(function(v){return v>sv(stateAvgs.rate_total_per1k)*1.1?ORS.red:v<sv(stateAvgs.rate_total_per1k)*0.9?ORS.teal:ORS.blue;});
-  var d=barChart("OD Rate per 1,000 -- KHP "+troop.name+" Counties (ranked)",DS.core,lbls,[{label:"Rate per 1,000",data:vals,backgroundColor:colors,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"Rate per 1,000",font:{family:"Arial",size:11}}}}});
-  // Add KS avg reference line annotation note
-  return d;
+  return barChart("OD Rate per 1,000 -- KHP "+troop.name+" Counties (ranked)",DS.core,lbls,[{label:"Rate per 1,000",data:vals,backgroundColor:colors,borderRadius:4}],{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:"Rate per 1,000",font:{family:"Arial",size:11}}}}});
 }
 
 function troopNaloxoneChart(l){
@@ -864,23 +996,6 @@ function mkMapWrapper(id,title,legendItems,source,dlTitle,cls){
   return w;
 }
 
-function addHatch(map){
-  var svgEl=document.createElementNS("http://www.w3.org/2000/svg","svg");
-  svgEl.setAttribute("style","position:absolute;width:0;height:0");
-  var defs=document.createElementNS("http://www.w3.org/2000/svg","defs");
-  var pat=document.createElementNS("http://www.w3.org/2000/svg","pattern");
-  pat.setAttribute("id","hatch-"+mapCnt);pat.setAttribute("width","6");pat.setAttribute("height","6");
-  pat.setAttribute("patternUnits","userSpaceOnUse");pat.setAttribute("patternTransform","rotate(45)");
-  var rect=document.createElementNS("http://www.w3.org/2000/svg","rect");
-  rect.setAttribute("width","6");rect.setAttribute("height","6");rect.setAttribute("fill","#d5d5d5");
-  var line=document.createElementNS("http://www.w3.org/2000/svg","line");
-  line.setAttribute("x1","0");line.setAttribute("y1","0");line.setAttribute("x2","0");line.setAttribute("y2","6");
-  line.setAttribute("stroke","#888");line.setAttribute("stroke-width","2.5");
-  pat.appendChild(rect);pat.appendChild(line);defs.appendChild(pat);svgEl.appendChild(defs);
-  map.getContainer().appendChild(svgEl);
-  return "url(#hatch-"+mapCnt+")";
-}
-
 async function fetchTractGeo(sn,cn){
   var where="STATE%3D'"+sn+"'+AND+COUNTY%3D'"+String(cn).padStart(3,"0")+"'";
   try{
@@ -907,19 +1022,203 @@ function buildTractLookup(fips){
   return {lkp:lkp,tracts:tracts};
 }
 
-function tractStyle(feature,lkp,colorFn,hatchUrl){
-  var raw=String(parseInt(feature.properties.TRACT)),pad=raw.padStart(6,"0");
-  var t=lkp[pad]||lkp[raw];
-  var color="#E5EEF1",opacity=.8,hatch=false;
-  if(t){if(t.suppress_small_total===1){hatch=true;}else{color=colorFn(t);}}
-  return {fillColor:hatch?hatchUrl:color,fillPattern:hatch?hatchUrl:null,weight:1,color:"#fff",fillOpacity:opacity,className:hatch?"hatch-layer":""};
+// ── Multi-county Kansas choropleth map ─────────────────────────────────────
+async function buildMultiCountyChoropleth(selectedFipsArr, countyRows, topic) {
+  var metric = getChoroMetric(topic);
+  var mid = "map-" + (++mapCnt);
+  var names = countyRows.map(function(r){return r.NAME;}).join(", ");
+
+  // Build legend based on metric type
+  var legend;
+  if (metric.categorical && metric.field === "ecosystem_type") {
+    legend = ECO_LEGEND;
+  } else if (metric.categorical && metric.field === "burden_tier") {
+    legend = [
+      ["Very High",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],
+      ["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]
+    ];
+  } else {
+    legend = [
+      ["Highest",ORS.dkred],["High",ORS.red],["Moderate",ORS.orange],
+      ["Low",ORS.yellow],["Minimal","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"],["Not Selected","#E7E9EC"]
+    ];
+  }
+
+  var w = mkMapWrapper(mid, metric.label+" by County — "+names, legend,
+    "Source: ODMAP 2020-2025 | Kansas ORS", names+"_County_Map", "county-map");
+
+  // Pre-compute quantile breaks for numeric fields from selected counties
+  var selSet = new Set(selectedFipsArr);
+
+  w._init = async function(){
+    try{
+      var geo = await fetchCountyGeo();
+      if(!geo||!geo.features||!geo.features.length) return;
+      var map = L.map(mid, {zoomControl:true, attributionControl:false});
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:10}).addTo(map);
+      var hatch = addHatch(map);
+
+      // For numeric metrics: compute quantile breaks from selected rows only
+      var numBreaks = null;
+      if (!metric.categorical) {
+        var vals = countyRows.map(function(r){return sv(r[metric.field]);}).filter(function(v){return v>0;}).sort(function(a,b){return a-b;});
+        if (vals.length >= 4) {
+          function qv(arr,q){return arr[Math.floor(arr.length*q)]||0;}
+          numBreaks = [qv(vals,.25), qv(vals,.5), qv(vals,.75), qv(vals,.9)];
+        }
+      }
+
+      function getColor(r) {
+        if (!r || r.suppress_small_total === 1) return hatch;
+        var v = r[metric.field];
+        if (v === null || v === undefined) return "#E5EEF1";
+        if (metric.categorical) {
+          if (metric.field === "ecosystem_type") return ecoColor(v);
+          if (metric.field === "burden_tier") {
+            var bt = (v||"").toLowerCase();
+            if (bt.includes("very high")) return ORS.dkred;
+            if (bt.includes("high")) return ORS.red;
+            if (bt.includes("moderate")) return ORS.orange;
+            if (bt.includes("low") && !bt.includes("very")) return ORS.yellow;
+            if (bt.includes("minimal")) return ORS.green;
+            return "#E5EEF1";
+          }
+        }
+        // Numeric: use quantile breaks if available, else simple scale
+        var n = sv(v);
+        if (numBreaks) {
+          if (n >= numBreaks[3]) return ORS.dkred;
+          if (n >= numBreaks[2]) return ORS.red;
+          if (n >= numBreaks[1]) return ORS.orange;
+          if (n >= numBreaks[0]) return ORS.yellow;
+          return "#E5EEF1";
+        }
+        return ORS.blue;
+      }
+
+      var selectedFeatures = [];
+
+      L.geoJSON(geo, {
+        style: function(f) {
+          var fips = "20" + String(f.properties.COUNTY||"").padStart(3,"0");
+          var r = countyData.find(function(x){return padFIPS(x.FIPS)===fips;});
+          if (!selSet.has(fips)) {
+            return {fillColor:"#E7E9EC", weight:0.5, color:"#ccc", fillOpacity:0.5};
+          }
+          var isSup = r && r.suppress_small_total === 1;
+          return {
+            fillColor: isSup ? hatch : getColor(r),
+            weight: 2, color: "#325379",
+            fillOpacity: isSup ? 1 : 0.85
+          };
+        },
+        onEachFeature: function(f, lyr) {
+          var fips = "20" + String(f.properties.COUNTY||"").padStart(3,"0");
+          if (!selSet.has(fips)) return;
+          var r = countyData.find(function(x){return padFIPS(x.FIPS)===fips;});
+          selectedFeatures.push(lyr);
+          if (r) {
+            var val = r[metric.field];
+            var dispVal = metric.categorical ? (val||"--") : fmt(val, metric.field);
+            lyr.bindTooltip("<strong>"+(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dispVal, {permanent:true, direction:"center", className:"county-label"});
+            lyr.bindPopup("<strong>"+(r.NAME||f.properties.NAME)+" County</strong><br/>"+metric.label+": "+dispVal+"<br/>EB Rate/1k: "+fmt(r.odmap_eb_rate_total_per1k,"per1k")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>Ecosystem: "+(r.ecosystem_type||"--")+"<br/>"+(r.suppress_small_total===1?"<em>Data suppressed</em>":""));
+          }
+        }
+      }).addTo(map);
+
+      // Fit to selected counties
+      if (selectedFeatures.length) {
+        var group = L.featureGroup(selectedFeatures);
+        map.fitBounds(group.getBounds(), {padding:[30,30]});
+      }
+
+    }catch(e){
+      var el=document.getElementById(mid);
+      if(el) el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';
+    }
+  };
+  return w;
 }
 
-function tractPopup(feature,lkp,popupFn){
-  var raw=String(parseInt(feature.properties.TRACT)),pad=raw.padStart(6,"0");
-  return lkp[pad]||lkp[raw];
+// ── Multi-county tract map (contiguous counties combined) ──────────────────
+async function buildMultiCountyTractMap(countyRows, metricKey) {
+  var mid = "map-" + (++mapCnt);
+  var names = countyRows.map(function(r){return r.NAME;}).join(", ");
+  var allFips = countyRows.map(function(r){return padFIPS(r.FIPS);});
+
+  // Collect all tract data for these counties
+  var allTracts = [];
+  allFips.forEach(function(fips){
+    var cn = parseInt(fips.slice(2));
+    var tracts = tractData ? tractData.filter(function(r){return r.COUNTY_FIPS!==null&&parseInt(r.COUNTY_FIPS)===cn;}) : [];
+    tracts.forEach(function(t){ t._parentFips = fips; });
+    allTracts = allTracts.concat(tracts);
+  });
+
+  var lkp = {};
+  allTracts.forEach(function(t){
+    var id = String(parseInt(t.TRACT_FIPS||0)).padStart(6,"0");
+    lkp[id] = t; lkp[String(parseInt(t.TRACT_FIPS||0))] = t;
+    // Also key by STCOFIPS for safety
+    if(t.STCOFIPS) lkp[String(t.STCOFIPS)] = t;
+  });
+
+  var legend = [["High Burden",ORS.red],["Moderate",ORS.orange],["Low",ORS.yellow],["Minimal",ORS.green],["Suppressed (hatch)","#bdc3c7"],["No Data","#E5EEF1"]];
+  var w = mkMapWrapper(mid, "Census Tract Burden — "+names, legend, "Source: ODMAP 2020-2025 | Kansas ORS", names+"_Tract_Map");
+
+  w._init = async function(){
+    try{
+      // Fetch tract geo for each county and merge features
+      var allFeatures = [];
+      for(var i=0; i<allFips.length; i++){
+        var fips = allFips[i];
+        var sn = fips.slice(0,2), cn = parseInt(fips.slice(2));
+        var geo = await fetchTractGeo(sn, cn);
+        if(geo && geo.features) allFeatures = allFeatures.concat(geo.features);
+      }
+      if(!allFeatures.length) return;
+      var merged = {type:"FeatureCollection", features:allFeatures};
+
+      var map = L.map(mid, {zoomControl:true, attributionControl:false});
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:14}).addTo(map);
+      var hatch = addHatch(map);
+
+      function bColor(t){
+        var b=(t.burden_tier||"").toLowerCase();
+        if(b.includes("very high")||b.includes("high")) return ORS.red;
+        if(b.includes("moderate")) return ORS.orange;
+        if(b.includes("low")&&!b.includes("very")) return ORS.yellow;
+        if(b.includes("minimal")) return ORS.green;
+        return "#E5EEF1";
+      }
+
+      L.geoJSON(merged, {
+        style: function(f){
+          var raw = String(parseInt(f.properties.TRACT)), pad = raw.padStart(6,"0");
+          var t = lkp[pad] || lkp[raw];
+          if(!t) return {fillColor:"#E5EEF1",weight:1,color:"#fff",fillOpacity:.8};
+          if(t.suppress_small_total===1) return {fillColor:hatch,weight:1,color:"#aaa",fillOpacity:1};
+          return {fillColor:bColor(t),weight:1,color:"#fff",fillOpacity:.85};
+        },
+        onEachFeature: function(f,lyr){
+          var raw = String(parseInt(f.properties.TRACT)), pad = raw.padStart(6,"0");
+          var t = lkp[pad] || lkp[raw];
+          if(t) lyr.bindPopup("<strong>Tract "+f.properties.TRACT+"</strong><br/>Burden: "+(t.burden_tier||"--")+"<br/>EB Rate/1k: "+fmt(t.eb_rate_total_per1k,"per1k")+"<br/>Incidents: "+fmt(t.incidents_total,"")+"<br/>Ecosystem: "+(t.ecosystem_type||"--")+"<br/>"+(t.suppress_small_total===1?"<em>Data suppressed</em>":"Kits/yr: "+fmt(t.est_kits_needed_annual_median,"")));
+        }
+      }).addTo(map);
+
+      var layer = L.geoJSON(merged);
+      map.fitBounds(layer.getBounds(), {padding:[10,10]});
+
+    }catch(e){
+      var el=document.getElementById(mid);
+      if(el) el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';
+    }
+  };
+  return w;
 }
 
+// Single-county tract/EB/eco/naloxone maps (unchanged from original)
 async function buildTractMap(fips,cname){
   var sn=fips.slice(0,2),cn=parseInt(fips.slice(2));
   var tl=buildTractLookup(fips);
@@ -948,7 +1247,6 @@ async function buildEBRateMap(fips,cname){
   var sn=fips.slice(0,2),cn=parseInt(fips.slice(2));
   var tl=buildTractLookup(fips);
   if(!tl.tracts.length) return null;
-  // Statewide quantile breaks from ALL tracts
   var allRates=tractData?tractData.filter(function(r){return r.eb_rate_total_per1k&&r.suppress_small_total!==1;}).map(function(r){return r.eb_rate_total_per1k;}).sort(function(a,b){return a-b;}):[];
   function quantile(arr,q){var idx=Math.floor(arr.length*q);return arr[idx]||0;}
   var q25=quantile(allRates,.25),q50=quantile(allRates,.50),q75=quantile(allRates,.75),q90=quantile(allRates,.90);
@@ -998,10 +1296,9 @@ async function buildNaloxoneMap(fips,cname){
   var sn=fips.slice(0,2),cn=parseInt(fips.slice(2));
   var tl=buildTractLookup(fips);
   if(!tl.tracts.filter(function(r){return r.suppress_small_total!==1;}).length) return null;
-  // Statewide quantile breaks
   var allKits=tractData?tractData.filter(function(r){return r.est_kits_needed_annual_median&&r.suppress_small_total!==1;}).map(function(r){return r.est_kits_needed_annual_median;}).sort(function(a,b){return a-b;}):[];
   function qk(arr,q){var idx=Math.floor(arr.length*q);return arr[idx]||0;}
-  var k75=qk(allKits,.75),k90=qk(allKits,.90),k50=qk(allKits,.50),k25=qk(allKits,.25);
+  var k25=qk(allKits,.25),k50=qk(allKits,.50),k75=qk(allKits,.75),k90=qk(allKits,.90);
   function nColor(v){if(!v||v===0)return "#E5EEF1";if(v>=k90)return ORS.dkred;if(v>=k75)return ORS.red;if(v>=k50)return ORS.orange;if(v>=k25)return ORS.yellow;return "#E5EEF1";}
   var mid="map-"+(++mapCnt);
   var legend=[["Top 10% statewide",ORS.dkred],["75th-90th pctile",ORS.red],["50th-75th pctile",ORS.orange],["25th-50th pctile",ORS.yellow],["Below 25th pctile","#E5EEF1"],["Suppressed (hatch)","#bdc3c7"]];
@@ -1026,8 +1323,7 @@ async function buildTroopEcoMap(troopLetter){
   var mid="map-"+(++mapCnt);
   var troop=KHP[troopLetter];
   var troopFips=new Set(troop.c);
-  var legend=ECO_LEGEND.slice();
-  var w=mkMapWrapper(mid,"Drug Ecosystem by County -- KHP "+troop.name,legend,"Source: ODMAP 2020-2025 | Kansas ORS",troop.name.replace(/[^a-zA-Z0-9]/g,"_")+"_Ecosystem_Map","county-map");
+  var w=mkMapWrapper(mid,"Drug Ecosystem by County -- KHP "+troop.name,ECO_LEGEND,"Source: ODMAP 2020-2025 | Kansas ORS",troop.name.replace(/[^a-zA-Z0-9]/g,"_")+"_Ecosystem_Map","county-map");
   w._init=async function(){
     try{
       var geo=await fetchCountyGeo();
@@ -1035,7 +1331,6 @@ async function buildTroopEcoMap(troopLetter){
       var map=L.map(mid,{zoomControl:true,attributionControl:false});
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:8}).addTo(map);
       var hatch=addHatch(map);
-      var bounds=null;
       L.geoJSON(geo,{
         style:function(f){
           var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");
@@ -1051,7 +1346,6 @@ async function buildTroopEcoMap(troopLetter){
           if(r) lyr.bindPopup("<strong>"+(r.NAME||f.properties.NAME)+" County</strong><br/>Ecosystem: "+(r.ecosystem_type||"--")+"<br/>Burden: "+(r.burden_tier||"--")+"<br/>Rate/1k: "+fmt(r.rate_total_per1k,"per1k")+"<br/>"+(r.suppress_small_total===1?"<em>Data suppressed</em>":""));
         }
       }).addTo(map);
-      // Fit to troop counties
       var troopGeo={type:"FeatureCollection",features:geo.features.filter(function(f){var fips="20"+String(f.properties.COUNTY||"").padStart(3,"0");return troopFips.has(fips);})};
       if(troopGeo.features.length) map.fitBounds(L.geoJSON(troopGeo).getBounds(),{padding:[20,20]});
     }catch(e){var el=document.getElementById(mid);if(el)el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">Map unavailable</div>';}
@@ -1062,9 +1356,8 @@ async function buildTroopEcoMap(troopLetter){
 // ── Chart generation logic ─────────────────────────────────────────────────
 function genCharts(rows, topic, peers, aiTags, text){
   var charts=[];
-  var r=rows[0]; // primary row for single-county charts
+  var r=rows[0];
 
-  // Always-on by topic
   if(topic==="trends"){charts.push(trendChart(rows,peers));if(rows.length===1)charts.push(yoyChart(r));}
   else if(topic==="drugs"){charts.push(drugBarChart(rows));if(rows.length===1)charts.push(drugDonut(r));}
   else if(topic==="polysubstance"){var cd=buildComboTable(r);if(cd)charts.push(cd);if(rows.length===1)charts.push(drugDonut(r));}
@@ -1075,29 +1368,18 @@ function genCharts(rows, topic, peers, aiTags, text){
   else if(topic==="demographics"){if(rows.length===1)charts.push(demoChart(r));}
   else if(topic==="core"){charts.push(trendChart(rows,null));if(rows.length===1)charts.push(drugDonut(r));}
 
-  // ED age -- conditional + AI tag
   if(aiTags.indexOf("ed_age")>=0||shouldShowEDAge(r,text||""))
     charts.push(edAgeChart(rows));
-
-  // Suicide -- AI tag or data signal
   if(aiTags.indexOf("suicide_counts")>=0||shouldShowSuicide(r,text||""))
     {var sc=suicideCountChart(rows);if(sc)charts.push(sc);}
   if(aiTags.indexOf("suicide_pct")>=0||shouldShowSuicide(r,text||""))
     {var sp=suicidePctChart(rows);if(sp)charts.push(sp);}
-
-  // Repeat visit -- conditional + AI tag
   if(aiTags.indexOf("repeat_visit")>=0||shouldShowRepeatVisit(r,text||""))
     {var rv=repeatVisitChart(rows);if(rv)charts.push(rv);}
-
-  // Disposition -- AI tag
   if(aiTags.indexOf("ed_disposition")>=0)
     {var ed=edDispositionChart(rows);if(ed)charts.push(ed);}
-
-  // Dx tables
   if(["ed","core"].indexOf(topic)>=0&&rows.length===1)
     {var dxt=buildDxTable(r);if(dxt)dxt.forEach(function(t){charts.push(t);});}
-
-  // Combo table
   if(["drugs","polysubstance","core"].indexOf(topic)>=0&&rows.length===1)
     {var ct=buildComboTable(r);if(ct)charts.push(ct);}
 
@@ -1146,6 +1428,25 @@ function addChips(chips){
   chat.scrollTop=chat.scrollHeight;
 }
 
+// ── Suggestion bubble ──────────────────────────────────────────────────────
+function addSuggestions(suggestions) {
+  if (!suggestions || !suggestions.length) return;
+  var chat = document.getElementById("chat");
+  var gid = ++chipGrp;
+  var div = document.createElement("div");
+  div.className = "msg koda";
+  var links = suggestions.map(function(s, i){
+    return '<button class="sug-link" id="sug-'+gid+'-'+i+'">'+s+'</button>';
+  }).join("");
+  div.innerHTML = '<div class="avatar" style="opacity:0">K</div><div class="bubble" style="background:transparent;border:none;padding:2px 0"><div class="suggestion-bubble"><div class="sug-label">💡 You might also want to know</div><div class="sug-links">'+links+'</div></div></div>';
+  chat.appendChild(div);
+  suggestions.forEach(function(s, i){
+    var btn = document.getElementById("sug-"+gid+"-"+i);
+    if(btn) btn.addEventListener("click", function(){ sendChip(s); });
+  });
+  chat.scrollTop = chat.scrollHeight;
+}
+
 function sendChip(t){
   var locs=detectLocs(t);
   if(locs.length){sessionFIPS=locs[0].fips;sessionCountyName=locs[0].countyName;}
@@ -1181,41 +1482,41 @@ async function handleSend(){
   var locs=detectLocs(text);
   if(locs.length){sessionFIPS=locs[0].fips;sessionCountyName=locs[0].countyName;}
 
-  var topic=detectTopic(text),troopL=detectTroop(text);
+  var topic=detectTopic(text);
+  // FIX 1: Only detect troop from explicit mention — never fall back to sessionFIPS
+  var troopL=detectTroop(text);
+  var isTroopRequest = /troop|khp|highway patrol/.test(text.toLowerCase());
   addTyping();
 
   try{
     // ── No county, no troop ──────────────────────────────────────────────
-    if(!sessionFIPS&&topic!=="troop"){
+    if(!sessionFIPS&&!isTroopRequest){
       var r=await callAI("User said: \""+text+"\". No Kansas county mentioned. Ask which county or city they work in. You are KODA. Be direct, 1-2 sentences.");
       rmTyping();addMsg("koda",fmtResponse(r));
       addChips(["I'm from Reno County","I'm from Hutchinson","I'm from Sedgwick County","I'm from Wichita","I'm from Wyandotte County","I'm from Johnson County","I'm from Shawnee County"]);
     }
     // ── Troop ────────────────────────────────────────────────────────────
-    else if(topic==="troop"){
-      var tL=troopL||(sessionFIPS?F2T[sessionFIPS]:null);
-
-      if(!tL){
-        // Default: statewide overview charts + ask which troop
+    else if(isTroopRequest){
+      // FIX 1 continued: only drill down if troop letter is EXPLICITLY mentioned
+      if(!troopL){
+        // Always show statewide overview first — never auto-pick a troop
         rmTyping();
-        var bubble=addMsg("koda","<p>Here's an overview of overdose activity across all KHP Troop areas. Select a troop below for a detailed breakdown including ecosystem mapping, naloxone needs, and ED data.</p>","Statewide KHP Overview");
+        var bubble=addMsg("koda","<p>Here's an overview of overdose activity across all KHP Troop areas (2020–2025). Select a troop below for a full breakdown including county-level rates, naloxone needs, ED age patterns, and an ecosystem map.</p>","Statewide KHP Overview");
         if(bubble){bubble.appendChild(troopEMSChart());bubble.appendChild(troopEDChart());}
         addChips(["Troop A - Olathe (KC Metro)","Troop B - Topeka (NE Kansas)","Troop C - Salina (N Central)","Troop D - Hays (NW Kansas)","Troop E - Garden City (SW Kansas)","Troop F - Wichita (S Central)","Troop H - Chanute (SE Kansas)"]);
       } else {
-        // Drill-down: full troop analysis
-        var ts=buildTroopSummary(tL);
-        var ta=await callAI("You are KODA, Kansas Overdose Data Assistant.\n\nKHP "+KHP[tL].name+" data:\n\n"+ts+"\n\nSummarize in 3-4 paragraphs: which counties have highest burden (with numbers), dominant ecosystem types, year-over-year trends, ED vs EMS comparison, any suppressed counties. Calculate and state total EMS incidents, total ED visits, and total naloxone kits needed (high estimate) for the troop. End with Worth noting: insight. Skip pleasantries.");
+        // Explicit troop letter — drill down
+        var ts=buildTroopSummary(troopL);
+        var ta=await callAI("You are KODA, Kansas Overdose Data Assistant.\n\nKHP "+KHP[troopL].name+" data:\n\n"+ts+"\n\nSummarize in 3-4 paragraphs: which counties have highest burden (with numbers), dominant ecosystem types, year-over-year trends, ED vs EMS comparison, any suppressed counties. Calculate and state total EMS incidents, total ED visits, and total naloxone kits needed (high estimate) for the troop. End with Worth noting: insight. Skip pleasantries.");
         rmTyping();
         var parsed=parseAITags(ta);
-        var b2=addMsg("koda",fmtResponse(parsed.text),"KHP "+KHP[tL].name);
-
-        // Charts
+        var b2=addMsg("koda",fmtResponse(parsed.text),"KHP "+KHP[troopL].name);
         if(b2){
-          b2.appendChild(troopRateChart(tL));
-          b2.appendChild(troopNaloxoneChart(tL));
-          b2.appendChild(troopEDAgeChart(tL)||document.createTextNode(""));
-          b2.appendChild(troopSuicideChart(tL)||document.createTextNode(""));
-          var em=await buildTroopEcoMap(tL);
+          b2.appendChild(troopRateChart(troopL));
+          b2.appendChild(troopNaloxoneChart(troopL));
+          var teac=troopEDAgeChart(troopL); if(teac) b2.appendChild(teac);
+          var tsc=troopSuicideChart(troopL); if(tsc) b2.appendChild(tsc);
+          var em=await buildTroopEcoMap(troopL);
           if(em){b2.appendChild(em);setTimeout(function(){em._init();},100);}
         }
         addChips(["Which county in this troop has the highest burden?","Tell me about naloxone needs in this troop","What are the dominant drug ecosystems across this troop?","Show me ED vs EMS data for this troop","Which counties are trending up?"]);
@@ -1223,7 +1524,6 @@ async function handleSend(){
     }
     // ── County / Multi-county ─────────────────────────────────────────────
     else{
-      // Collect all detected counties (multi-county support)
       var allLocs=detectLocs(text);
       var rows=[];
       if(allLocs.length>1){
@@ -1242,18 +1542,37 @@ async function handleSend(){
         var tag=isMulti?rows.map(function(r){return r.NAME;}).join(", "):rows[0].NAME;
         var peers=isMulti?[]:getPeers(sessionFIPS,3);
 
-        // Tract data for single county questions
+        // Tract/map prep
         var extra=null,tractMap=null,ebMap=null,ecoMap=null,naloxMap=null;
-        if(topic==="tract"&&!isMulti){
-          extra=buildTractSummary(sessionFIPS);
-          tractMap=await buildTractMap(sessionFIPS,rows[0].NAME);
-          ebMap=await buildEBRateMap(sessionFIPS,rows[0].NAME);
-        }
-        if(topic==="naloxone"&&!isMulti){
-          naloxMap=await buildNaloxoneMap(sessionFIPS,rows[0].NAME);
-        }
-        if((topic==="drugs"||topic==="network"||topic==="polysubstance")&&!isMulti){
-          ecoMap=await buildEcoMap(sessionFIPS,rows[0].NAME);
+        var multiChoroMap=null, multiTractMap=null;
+        var shownTractMap=false, shownEcoMap=false;
+
+        if(isMulti){
+          // FIX 2: Multi-county choropleth — always build for multi-county
+          var selectedFipsArr=rows.map(function(r){return padFIPS(r.FIPS);});
+          multiChoroMap=await buildMultiCountyChoropleth(selectedFipsArr, rows, topic);
+
+          // Check contiguity for tract map offer
+          var contiguous=areAllContiguous(selectedFipsArr);
+          if(contiguous&&(topic==="tract"||/map|tract|neighborhood|where/.test(text.toLowerCase()))){
+            multiTractMap=await buildMultiCountyTractMap(rows, topic);
+            shownTractMap=true;
+          }
+        } else {
+          // Single county
+          if(topic==="tract"){
+            extra=buildTractSummary(sessionFIPS);
+            tractMap=await buildTractMap(sessionFIPS,rows[0].NAME);
+            ebMap=await buildEBRateMap(sessionFIPS,rows[0].NAME);
+            shownTractMap=true;
+          }
+          if(topic==="naloxone"){
+            naloxMap=await buildNaloxoneMap(sessionFIPS,rows[0].NAME);
+          }
+          if(topic==="drugs"||topic==="network"||topic==="polysubstance"){
+            ecoMap=await buildEcoMap(sessionFIPS,rows[0].NAME);
+            shownEcoMap=true;
+          }
         }
 
         var sp=buildSysPrompt(rows,topic,extra,peers);
@@ -1267,27 +1586,38 @@ async function handleSend(){
 
         // Maps
         if(bub){
+          if(multiChoroMap){bub.appendChild(multiChoroMap);setTimeout(function(){multiChoroMap._init();},100);}
+          if(multiTractMap){bub.appendChild(multiTractMap);setTimeout(function(){multiTractMap._init();},200);}
           if(tractMap){bub.appendChild(tractMap);setTimeout(function(){tractMap._init();},100);}
           if(ebMap){bub.appendChild(ebMap);setTimeout(function(){ebMap._init();},150);}
           if(ecoMap){bub.appendChild(ecoMap);setTimeout(function(){ecoMap._init();},100);}
           if(naloxMap){bub.appendChild(naloxMap);setTimeout(function(){naloxMap._init();},100);}
         }
 
-        // Charts
+        // Charts (skip for multi-county map requests since choropleth IS the answer)
         var noChart=["tract","troop","intervention","network"];
         if(noChart.indexOf(topic)<0&&bub){
           var charts=genCharts(rows,topic,peers,parsed.tags,text);
           charts.forEach(function(c){if(c)bub.appendChild(c);});
         }
 
-        addChips([
-          "Where is overdose burden highest within this county?",
-          "What drugs are driving overdoses here?",
-          "What does our naloxone gap look like?",
-          "Tell me about fatal overdoses in our county",
-          "What intervention strategies fit our data profile?",
-          "Break down overdoses by KHP Troop area"
-        ]);
+        // FIX 3: Proactive suggestions
+        var suggestions=buildSuggestions(rows,topic,isMulti,shownTractMap,shownEcoMap);
+        if(suggestions.length) addSuggestions(suggestions);
+
+        // Contiguity note for non-contiguous multi-county
+        if(isMulti&&!areAllContiguous(rows.map(function(r){return padFIPS(r.FIPS);}))){
+          addChips(["Show me a tract map for "+rows[0].NAME+" County","Show me a tract map for "+rows[rows.length-1].NAME+" County"]);
+        } else {
+          addChips([
+            "Where is overdose burden highest within this county?",
+            "What drugs are driving overdoses here?",
+            "What does our naloxone gap look like?",
+            "Tell me about fatal overdoses in our county",
+            "What intervention strategies fit our data profile?",
+            "Break down overdoses by KHP Troop area"
+          ]);
+        }
       }
     }
   }catch(e){rmTyping();addMsg("koda","<p>Error: "+e.message+". Please try again.</p>");}
