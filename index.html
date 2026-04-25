@@ -260,27 +260,7 @@ function zscoreColor(val,mean,sd){
 }
 
 // ── Location detection (FIX: word-boundary matching) ──────────────────────
-// County names that are also common English words — require "X county" phrasing
-// to avoid false matches on words like "grant", "elk", "chase", "rice", etc.
-var AMBIGUOUS_COUNTIES = new Set([
-  "grant","chase","elk","rice","rush","cloud","lane","lincoln","logan",
-  "norton","osage","ottawa","pratt","republic","rooks","scott","stafford",
-  "stanton","stevens","sumner","thomas","trego","wallace","wilson","woodson"
-]);
-
 function detectLocs(text){
-  var cleaned = text.toLowerCase()
-    .replace(/\ball\s+\d+\s+counties?\b/gi,"")
-    .replace(/\bthese\s+counties?\b/gi,"")
-    .replace(/\bthose\s+counties?\b/gi,"")
-    .replace(/\bthe\s+counties?\b/gi,"")
-    .replace(/\beach\s+county\b/gi,"")
-    .replace(/\bboth\s+counties?\b/gi,"");
-
-  var found = [];
-  Object.keys(CF).forEach(function(county){
-    var lc = county.toLowerCase();
-    var re = new RegExp("\\b" + lc.replace(/[.*+?^${}()|[\]\\]/g,"\\function detectLocs(text){
   // Strip generic filler phrases that confuse multi-county detection
   var cleaned=text.toLowerCase()
     .replace(/\ball\s+\d+\s+counties?\b/gi,"")
@@ -304,76 +284,6 @@ function detectLocs(text){
     });
   }
   var seen={},unique=[];
-  found.forEach(function(f){if(!seen[f.fips]){seen[f.fips]=1;unique.push(f);}});
-  return unique;
-}") + "\\b","i");
-    if(AMBIGUOUS_COUNTIES.has(lc)){
-      // Only match if followed by "county" within a few words
-      var reStrict = new RegExp("\\b" + lc.replace(/[.*+?^${}()|[\]\\]/g,"\\function detectLocs(text){
-  // Strip generic filler phrases that confuse multi-county detection
-  var cleaned=text.toLowerCase()
-    .replace(/\ball\s+\d+\s+counties?\b/gi,"")
-    .replace(/\bthese\s+counties?\b/gi,"")
-    .replace(/\bthose\s+counties?\b/gi,"")
-    .replace(/\bthe\s+counties?\b/gi,"")
-    .replace(/\beach\s+county\b/gi,"")
-    .replace(/\bboth\s+counties?\b/gi,"");
-
-  var found=[];
-  // Match county names with word boundaries — require county name to be a whole word
-  Object.keys(CF).forEach(function(county){
-    var re=new RegExp("\\b"+county.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
-    if(re.test(cleaned+" county")||re.test(cleaned))
-      found.push({fips:CF[county],countyName:county});
-  });
-  if(!found.length){
-    Object.keys(CityF).forEach(function(city){
-      var re=new RegExp("\\b"+city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
-      if(re.test(cleaned)) found.push({fips:CityF[city],countyName:FC[CityF[city]]});
-    });
-  }
-  var seen={},unique=[];
-  found.forEach(function(f){if(!seen[f.fips]){seen[f.fips]=1;unique.push(f);}});
-  return unique;
-}") + "\\s+county\\b","i");
-      if(reStrict.test(cleaned)) found.push({fips:CF[county],countyName:county});
-    } else {
-      if(re.test(cleaned)) found.push({fips:CF[county],countyName:county});
-    }
-  });
-  if(!found.length){
-    Object.keys(CityF).forEach(function(city){
-      var re = new RegExp("\\b" + city.replace(/[.*+?^${}()|[\]\\]/g,"\\function detectLocs(text){
-  // Strip generic filler phrases that confuse multi-county detection
-  var cleaned=text.toLowerCase()
-    .replace(/\ball\s+\d+\s+counties?\b/gi,"")
-    .replace(/\bthese\s+counties?\b/gi,"")
-    .replace(/\bthose\s+counties?\b/gi,"")
-    .replace(/\bthe\s+counties?\b/gi,"")
-    .replace(/\beach\s+county\b/gi,"")
-    .replace(/\bboth\s+counties?\b/gi,"");
-
-  var found=[];
-  // Match county names with word boundaries — require county name to be a whole word
-  Object.keys(CF).forEach(function(county){
-    var re=new RegExp("\\b"+county.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
-    if(re.test(cleaned+" county")||re.test(cleaned))
-      found.push({fips:CF[county],countyName:county});
-  });
-  if(!found.length){
-    Object.keys(CityF).forEach(function(city){
-      var re=new RegExp("\\b"+city.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b","i");
-      if(re.test(cleaned)) found.push({fips:CityF[city],countyName:FC[CityF[city]]});
-    });
-  }
-  var seen={},unique=[];
-  found.forEach(function(f){if(!seen[f.fips]){seen[f.fips]=1;unique.push(f);}});
-  return unique;
-}") + "\\b","i");
-      if(re.test(cleaned)) found.push({fips:CityF[city],countyName:FC[CityF[city]]});
-    });
-  }
-  var seen = {}, unique = [];
   found.forEach(function(f){if(!seen[f.fips]){seen[f.fips]=1;unique.push(f);}});
   return unique;
 }
@@ -930,8 +840,11 @@ async function buildEcoMap(fips,cname){
 
 // Shared tile layer factory — crossOrigin required for html2canvas downloads
 function mkTiles(map,maxZoom){
+  // Use Stadia Alidade Smooth (CORS-enabled, no label) for html2canvas compatibility
+  L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",{
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{
     maxZoom:maxZoom||14,
+    crossOrigin:"anonymous",
     attribution:""
   }).addTo(map);
 }
