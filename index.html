@@ -336,14 +336,50 @@ function buildSuggestions(rows,topic,isMulti,shownTract,shownEco){
 function getPeers(fips,n){
   n=n||3;if(!countyData) return [];
   var row=countyData.find(function(r){return padFIPS(r.FIPS)===fips;});if(!row) return [];
-  var pop=row.population_1||row.POPULATION||0,burden=row.burden_tier||"",eco=row.ecosystem_type||"";
-  var scored=countyData.filter(function(r){return padFIPS(r.FIPS)!==fips&&r.suppress_small_total!==1;}).map(function(r){
-    var sc=0,rp=r.population_1||r.POPULATION||0;
-    if(pop>0&&Math.abs(rp-pop)/pop<0.5)sc+=3;else if(pop>0&&Math.abs(rp-pop)/pop<1.0)sc+=1;
-    if(r.burden_tier&&r.burden_tier===burden)sc+=2;if(r.ecosystem_type&&r.ecosystem_type===eco)sc+=2;
-    return{row:r,sc:sc};
+  var pop=row.population_1||row.POPULATION||0;
+  var burden=row.burden_tier||"";
+  var eco=row.ecosystem_type||"";
+  var neighbors=new Set(ADJ[fips]||[]);
+
+  var candidates=countyData.filter(function(r){
+    var cf=padFIPS(r.FIPS);
+    if(cf===fips) return false;
+    if(r.suppress_small_total===1) return false;
+    // Hard exclude: population differs by more than 3x in either direction
+    var rp=r.population_1||r.POPULATION||0;
+    if(pop>0&&rp>0&&(rp/pop>3||pop/rp>3)) return false;
+    return true;
   });
-  scored.sort(function(a,b){return b.sc-a.sc;});return scored.slice(0,n).map(function(s){return s.row;});
+
+  var scored=candidates.map(function(r){
+    var sc=0;
+    var cf=padFIPS(r.FIPS);
+    var rp=r.population_1||r.POPULATION||0;
+    // Adjacency — highest weight
+    if(neighbors.has(cf)) sc+=4;
+    // Population proximity
+    if(pop>0&&rp>0){
+      var ratio=Math.abs(rp-pop)/pop;
+      if(ratio<0.30) sc+=2;
+      else if(ratio<0.60) sc+=1;
+    }
+    // Burden tier match
+    if(r.burden_tier&&r.burden_tier===burden) sc+=2;
+    // Ecosystem match
+    if(r.ecosystem_type&&r.ecosystem_type===eco) sc+=1;
+    return{row:r,sc:sc,isAdj:neighbors.has(cf)};
+  });
+
+  scored.sort(function(a,b){return b.sc-a.sc;});
+
+  // Guarantee at least one adjacent county is included
+  var out=scored.slice(0,n).map(function(s){return s.row;});
+  var hasAdj=out.some(function(r){return neighbors.has(padFIPS(r.FIPS));});
+  if(!hasAdj){
+    var firstAdj=scored.find(function(s){return s.isAdj;});
+    if(firstAdj){out[out.length-1]=firstAdj.row;}
+  }
+  return out;
 }
 
 function shouldShowSuicide(row,text){var t=text.toLowerCase();if(/suicide|mental health|behavioral|depression|anxiety|crisis|ideation/.test(t))return true;if(row.pct_suicide_att_6yr&&stateAvgs.pct_suicide_att_6yr&&row.pct_suicide_att_6yr>stateAvgs.pct_suicide_att_6yr*1.2)return true;return false;}
@@ -1007,6 +1043,52 @@ async function handleSend(){
   var inp=document.getElementById("user-input"),text=inp.value.trim();if(!text)return;
   inp.value="";isLoading=true;document.getElementById("send-btn").disabled=true;
   addMsg("user","<p>"+text+"</p>");chatStarted=true;
+
+  // ── Capability meta-questions — answer directly, no data needed ──────────
+  var isCapabilityQ=/what (maps|charts|data|visualizations?|information|can you show|do you have|can you provide|can you make|are available)|what kinds? of (maps|charts|data)|show me what|what can you (show|tell|provide|give)|what('s| is) available|what (do|does) (you|koda) (have|know|show|offer)|capabilities|what (topics|questions) can/i.test(text.toLowerCase());
+  if(isCapabilityQ){
+    rmTyping();
+    addMsg("koda","<p>Here's what I can show for any Kansas county:</p>"+
+      "<p><strong>Charts</strong></p>"+
+      "<ul style='margin:6px 0 10px 18px;line-height:1.9'>"+
+      "<li>EMS overdose rate trend over time (2020–2025) vs KS average and peer counties</li>"+
+      "<li>Year-over-year % change in EMS overdose rate</li>"+
+      "<li>Drug type breakdown by EMS incident count (opioid, meth, benzo, alcohol, cocaine, synthetic marijuana)</li>"+
+      "<li>Drug mix donut chart (proportion of incidents by drug type)</li>"+
+      "<li>Fatal overdose trend by year (2018–2025), all causes and opioid-specific</li>"+
+      "<li>EARS overdose spike events by year</li>"+
+      "<li>ED visits by age group (2020–2025)</li>"+
+      "<li>ED visits by race/ethnicity (2020–2025)</li>"+
+      "<li>Suicide-related ED visit counts (attempts, ideation, related presentations)</li>"+
+      "<li>Suicide-related ED visits as % of total, compared to KS average</li>"+
+      "<li>Repeat ED visits by return window (30, 90, 180 days — visit-based)</li>"+
+      "<li>ED disposition (discharged, admitted, transferred, deceased)</li>"+
+      "<li>Naloxone kit need comparison vs peer counties and KS average</li>"+
+      "<li>Fatal overdose demographics (age group, sex, race/ethnicity, 2018–2025)</li>"+
+      "<li>Multi-county side-by-side comparison bars (rate, naloxone need, fatal rate, ED visits)</li>"+
+      "</ul>"+
+      "<p><strong>Maps (census tract level)</strong></p>"+
+      "<ul style='margin:6px 0 10px 18px;line-height:1.9'>"+
+      "<li>EMS overdose burden by census tract (Very High → Minimal classification)</li>"+
+      "<li>Empirical Bayes–adjusted EMS OD rate by tract (statewide quantile scale)</li>"+
+      "<li>Drug ecosystem type by census tract</li>"+
+      "<li>Naloxone kit need by tract (5-shade statewide quantile, based on high estimate)</li>"+
+      "<li>Hospital transport rate z-score by tract (blue = above state mean, red = below)</li>"+
+      "</ul>"+
+      "<p><strong>Maps (county level)</strong></p>"+
+      "<ul style='margin:6px 0 10px 18px;line-height:1.9'>"+
+      "<li>Multi-county choropleth — colored by EB rate, burden tier, ecosystem, naloxone need, or fatal rate depending on what you're asking</li>"+
+      "<li>KHP Troop area ecosystem map</li>"+
+      "</ul>"+
+      "<p><strong>Tables</strong></p>"+
+      "<ul style='margin:6px 0 10px 18px;line-height:1.9'>"+
+      "<li>Top ED diagnosis codes (2020–2025 and 2024–25)</li>"+
+      "<li>Top polysubstance combinations by EMS incident count</li>"+
+      "</ul>"+
+      "<p>Tell me which county you're working in and what you'd like to see.</p>");
+    isLoading=false;document.getElementById("send-btn").disabled=false;document.getElementById("user-input").focus();
+    return;
+  }
 
   var locs=detectLocs(text);
   if(locs.length){sessionFIPS=locs[0].fips;sessionCountyName=locs[0].countyName;}
