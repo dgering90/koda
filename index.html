@@ -293,7 +293,7 @@ function detectTroop(text){var m=text.match(/\btroop\s+([a-h])\b/i);return m?m[1
 function detectTopic(t){
   t=t.toLowerCase();
   if(/hospital.*transport|transport.*rate|ems.*transport/.test(t)) return "transport";
-  if(/tract|neighborhood|hotspot|where.*burden|where.*highest|census/.test(t)) return "tract";
+  if(/tract|neighborhood|hotspot|where.*burden|where.*highest|census|show.*map|give.*map|provide.*map|map.*county|map.*area/.test(t)) return "tract";
   if(/troop|khp|highway patrol/.test(t)) return "troop";
   if(/diagnosis|dx|icd|code/.test(t)) return "ed";
   if(/polysubstance|combination|combo|co-use|multiple drug/.test(t)) return "polysubstance";
@@ -656,7 +656,43 @@ function mkMapWrapper(id,title,legendItems,source,dlTitle,cls){
       return'<div class="map-legend-item"><div class="map-swatch" style="background:'+x[1]+'"></div>'+x[0]+'</div>';
     }).join("")+'</div>'+(source?'<div class="chart-source">'+source+'</div>':'')+
     '<button class="dl-btn" id="dlb-'+id+'">&#8681; Download Map</button>';
-  setTimeout(function(){var btn=document.getElementById("dlb-"+id);if(btn)btn.onclick=function(){var el=document.getElementById("mw-"+id);if(el)html2canvas(el,{backgroundColor:"#ffffff",scale:2,useCORS:true,allowTaint:false,logging:false}).then(function(cv){var a=document.createElement("a");a.download="KODA_"+dlTitle.replace(/[^a-zA-Z0-9]/g,"_")+".png";a.href=cv.toDataURL("image/png");a.click();}).catch(function(){alert("Map download failed — try right-clicking the map and saving the image directly.");});};},300);
+  setTimeout(function(){
+    var btn=document.getElementById("dlb-"+id);
+    if(btn) btn.onclick=function(){
+      var el=document.getElementById("mw-"+id);
+      if(!el) return;
+      // Brief delay to ensure tiles are fully rendered before capture
+      btn.textContent="Preparing…";
+      setTimeout(function(){
+        html2canvas(el,{
+          backgroundColor:"#ffffff",
+          scale:2,
+          useCORS:true,
+          allowTaint:false,
+          logging:false,
+          imageTimeout:8000
+        }).then(function(cv){
+          var a=document.createElement("a");
+          a.download="KODA_"+dlTitle.replace(/[^a-zA-Z0-9]/g,"_")+".png";
+          a.href=cv.toDataURL("image/png");
+          a.click();
+          btn.textContent="⬇ Download Map";
+        }).catch(function(err){
+          console.warn("html2canvas error:",err);
+          // Fallback: open map wrapper in new tab for manual save
+          var win=window.open("","_blank");
+          if(win){
+            win.document.write('<html><body style="margin:0;background:#fff">');
+            win.document.write(el.outerHTML);
+            win.document.write('</body></html>');
+            win.document.close();
+          }
+          btn.textContent="⬇ Download Map";
+          alert("Auto-download blocked by browser. The map has been opened in a new tab — right-click to save.");
+        });
+      },600);
+    };
+  },300);
   return w;
 }
 async function fetchTractGeo(sn,cn){
@@ -795,7 +831,14 @@ async function buildEcoMap(fips,cname){
 }
 
 // Shared tile layer factory — crossOrigin required for html2canvas downloads
-function mkTiles(map,maxZoom){L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",{maxZoom:maxZoom||14,crossOrigin:true}).addTo(map);}
+function mkTiles(map,maxZoom){
+  // Use Stadia Alidade Smooth (CORS-enabled, no label) for html2canvas compatibility
+  L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png",{
+    maxZoom:maxZoom||14,
+    crossOrigin:"anonymous",
+    attribution:""
+  }).addTo(map);
+}
 
 // Shared helper: compute 5-shade statewide naloxone quantile breaks from all tracts
 function getNaloxoneBreaks(){
